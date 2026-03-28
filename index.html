@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Quản Lý Chuyến Đi - TVK</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Be Vietnam Pro',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)}
+.wrap{width:100%;max-width:400px}
+.logo{text-align:center;margin-bottom:28px}
+.logo-icon{width:80px;height:80px;background:linear-gradient(135deg,#e94560,#0f3460);border-radius:24px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 8px 32px rgba(233,69,96,.4);font-size:40px}
+.logo h1{color:#fff;font-size:22px;font-weight:700}
+.logo p{color:rgba(255,255,255,.6);font-size:13px;margin-top:4px}
+.card{background:rgba(255,255,255,.08);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:32px}
+.card h2{color:#fff;font-size:18px;font-weight:700;margin-bottom:22px;text-align:center}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:12px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px}
+.fg input{width:100%;padding:11px 14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:10px;font-size:14px;font-family:inherit;color:#fff;outline:none;transition:all .2s}
+.fg input::placeholder{color:rgba(255,255,255,.35)}
+.fg input:focus{border-color:rgba(233,69,96,.7);background:rgba(255,255,255,.15)}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,#e94560,#c23152);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:6px;transition:all .2s;box-shadow:0 4px 20px rgba(233,69,96,.4)}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(233,69,96,.5)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.err{background:rgba(233,69,96,.2);border:1px solid rgba(233,69,96,.4);color:#ff8fa3;border-radius:8px;padding:10px 14px;font-size:13px;margin-top:12px;display:none;text-align:center}
+.err.show{display:block}
+.footer{text-align:center;color:rgba(255,255,255,.4);font-size:12px;margin-top:18px}
+.sp{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-icon">🚌</div>
+    <h1>Quản Lý Chuyến Đi</h1>
+    <p>Trường TH, THCS và THPT Trương Vĩnh Ký</p>
+  </div>
+  <div class="card">
+    <h2>Đăng Nhập</h2>
+    <div class="fg"><label>Tên đăng nhập</label><input type="text" id="user" placeholder="Nhập tên đăng nhập" autocomplete="username"></div>
+    <div class="fg"><label>Mật khẩu</label><input type="password" id="pass" placeholder="Nhập mật khẩu" autocomplete="current-password"></div>
+    <button class="btn-login" id="btnLogin" onclick="doLogin()">Đăng Nhập</button>
+    <div class="err" id="errMsg"></div>
+  </div>
+  <div class="footer">© 2025 Trường TVK</div>
+</div>
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby-fepLSS8nFnVgom0yGzBRzLFru-Yh2rvP-xo62aNEaBJxjoZGlQNnIxi-tqzfdCf63w/exec';
+window.onload = function() {
+  if (sessionStorage.getItem('cd_user')) { window.location.href='app.html'; return; }
+  ['user','pass'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  });
+};
+async function doLogin() {
+  const u=document.getElementById('user').value.trim(), p=document.getElementById('pass').value;
+  const btn=document.getElementById('btnLogin'), err=document.getElementById('errMsg');
+  if(!u||!p){showErr('Vui lòng nhập đầy đủ');return;}
+  btn.disabled=true; btn.innerHTML='<span class="sp"></span>Đang đăng nhập...'; err.classList.remove('show');
+  try {
+    const params=new URLSearchParams({action:'login',username:u,password:p});
+    const res=await fetch(GAS_URL+'?'+params.toString(),{method:'GET',redirect:'follow'});
+    const data=JSON.parse(await res.text());
+    if(data.success){sessionStorage.setItem('cd_user',JSON.stringify(data.user));window.location.href='app.html';}
+    else showErr(data.error||'Sai thông tin đăng nhập');
+  } catch(e){showErr('Không thể kết nối server');}
+  finally{btn.disabled=false;btn.innerHTML='Đăng Nhập';}
+}
+function showErr(m){const e=document.getElementById('errMsg');e.textContent=m;e.classList.add('show');}
+</script>
+</body>
+</html>
