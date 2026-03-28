@@ -474,7 +474,19 @@ const API = {
           params.append(k, typeof data[k]==='object' ? JSON.stringify(data[k]) : data[k]);
         }
       }
-      const res = await fetch(GAS_URL+'?'+params.toString(), {method:'GET',redirect:'follow'});
+      const queryStr = params.toString();
+      let res;
+      // Nếu data lớn hơn 2000 ký tự → dùng POST để tránh 400 Bad Request
+      if (queryStr.length > 2000) {
+        res = await fetch(GAS_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'text/plain'},
+          body: JSON.stringify(data),
+          redirect: 'follow'
+        });
+      } else {
+        res = await fetch(GAS_URL+'?'+queryStr, {method:'GET', redirect:'follow'});
+      }
       const text = await res.text();
       try { return JSON.parse(text); } catch(e) { return {error:'Lỗi phản hồi server'}; }
     } catch(e) { return {error:'Lỗi kết nối: '+e.message}; }
