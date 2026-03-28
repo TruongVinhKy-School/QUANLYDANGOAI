@@ -692,7 +692,14 @@ async function loadHS(p){
 function renderHS(list){
   const b=document.getElementById('hsTb');
   if(!list.length){b.innerHTML='<tr><td colspan="5"><div class="es"><div class="ei">📋</div><p>Chưa có học sinh</p></div></td></tr>';return;}
-  b.innerHTML=list.map(r=>'<tr><td><strong>'+r.ho_ten+'</strong></td><td>'+( r.ngay_sinh||'—')+'</td><td>'+r.lop+'</td><td>'+(r.ten_xe||'—')+'</td><td>'+(r.ten_phong||'—')+'</td></tr>').join('');
+  b.innerHTML=list.map(r=>{
+    // Làm sạch ngày sinh - chỉ lấy phần dd/mm/yyyy
+    let ns = r.ngay_sinh||'—';
+    if(ns.includes('GMT')||ns.includes('00:00:00')){
+      try{const d=new Date(ns);ns=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}catch(e){}
+    }
+    return '<tr><td><strong>'+r.ho_ten+'</strong></td><td>'+ns+'</td><td>'+r.lop+'</td><td>'+(r.ten_xe||'—')+'</td><td>'+(r.ten_phong||'—')+'</td></tr>';
+  }).join('');
   document.getElementById('hsPaging').textContent='Tổng: '+list.length+' học sinh';
 }
 function filterHS(){
@@ -716,8 +723,11 @@ function importHSFile(inp){
   const f=inp.files[0];if(!f)return;
   const rd=new FileReader();
   rd.onload=async function(e){
+    // Xóa BOM nếu có
+    if(e.target.result.charCodeAt(0)===0xFEFF) e.target.result = e.target.result.slice(1);
     const rows=parseCSV(e.target.result);
-    if(!rows.length){showToast('File trống','error');return;}
+    console.log('Rows parsed:', rows.length, 'First row:', JSON.stringify(rows[0]));
+    if(!rows.length){showToast('File trống hoặc không đọc được','error');return;}
     if(!confirm('Import '+rows.length+' học sinh?'))return;
     
     // Gửi từng batch 20 HS để tránh timeout và giới hạn URL
