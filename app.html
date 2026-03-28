@@ -651,7 +651,7 @@ function renderPhong(list){
   b.innerHTML=list.map(r=>'<tr><td><strong>'+r.ten_phong+'</strong></td><td>'+(r.khach_san||'—')+'</td><td>'+(r.gv_tens||'—')+'</td><td><span class="badge b-blue">'+(r.so_hs||0)+' HS</span></td><td><button class="btn btn-w btn-sm" onclick="fillPhong(\''+r.id+'\')">✏️</button> <button class="btn btn-d btn-sm" onclick="delPhong(\''+r.id+'\')">🗑</button></td></tr>').join('');
 }
 function fillPhDropdowns(){
-  const opts='<option value="">-- Chọn phòng --</option>'+phongAll.map(p=>'<option value="'+p.id+'">'+p.ten_phong+(p.khach_san?' ('+p.khach_san+')'):'')+'</option>').join('');
+  const opts='<option value="">-- Chọn phòng --</option>'+phongAll.map(p=>'<option value="'+p.id+'">'+p.ten_phong+(p.khach_san?' ('+p.khach_san+')':'')+' </option>').join('');
   const el=document.getElementById('qltt-ph');if(el)el.innerHTML=opts;
 }
 async function savePhong(){
