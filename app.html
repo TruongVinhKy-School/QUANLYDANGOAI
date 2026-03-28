@@ -474,21 +474,22 @@ const API = {
           params.append(k, typeof data[k]==='object' ? JSON.stringify(data[k]) : data[k]);
         }
       }
-      const queryStr = params.toString();
-      let res;
-      // Nếu data lớn hơn 2000 ký tự → dùng POST để tránh 400 Bad Request
-      if (queryStr.length > 2000) {
-        res = await fetch(GAS_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'text/plain'},
-          body: JSON.stringify(data),
-          redirect: 'follow'
-        });
-      } else {
-        res = await fetch(GAS_URL+'?'+queryStr, {method:'GET', redirect:'follow'});
-      }
+      const res = await fetch(GAS_URL+'?'+params.toString(), {method:'GET',redirect:'follow'});
       const text = await res.text();
       try { return JSON.parse(text); } catch(e) { return {error:'Lỗi phản hồi server'}; }
+    } catch(e) { return {error:'Lỗi kết nối: '+e.message}; }
+  },
+  // POST riêng cho data lớn (import hàng loạt)
+  async callPost(data) {
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'text/plain'},
+        body: JSON.stringify(data),
+        redirect: 'follow'
+      });
+      const text = await res.text();
+      try { return JSON.parse(text); } catch(e) { return {error:'Lỗi phản hồi server: '+text.substring(0,100)}; }
     } catch(e) { return {error:'Lỗi kết nối: '+e.message}; }
   },
   login: (u,p) => API.call({action:'login',username:u,password:p}),
@@ -499,7 +500,7 @@ const API = {
   getConfig: () => API.call({action:'getConfig'}),
   updateConfig: updates => API.call({action:'updateConfig',updates:JSON.stringify(updates)}),
   getHS: p => API.call({action:'getHS',...(p||{})}),
-  importHS: rows => API.call({action:'importHS',rows:JSON.stringify(rows)}),
+  importHS: rows => API.callPost({action:'importHS',rows:rows}),
   updateHS: d => API.call({action:'updateHS',...d}),
   deleteHS: id => API.call({action:'deleteHS',id}),
   clearHS: () => API.call({action:'clearHS'}),
@@ -516,7 +517,7 @@ const API = {
   updateSuKien: d => API.call({action:'updateSuKien',...d}),
   deleteSuKien: id => API.call({action:'deleteSuKien',id}),
   getDiemDanh: p => API.call({action:'getDiemDanh',...(p||{})}),
-  saveDiemDanh: d => API.call({action:'saveDiemDanh',...d,items:JSON.stringify(d.items)}),
+  saveDiemDanh: d => API.callPost({action:'saveDiemDanh',...d}),
   deleteDiemDanh: id => API.call({action:'deleteDiemDanh',id}),
   getDashboard: p => API.call({action:'getDashboard',...(p||{})}),
   getSuCo: p => API.call({action:'getSuCo',...(p||{})}),
