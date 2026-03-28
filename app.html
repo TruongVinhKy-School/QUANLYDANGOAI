@@ -718,11 +718,35 @@ function importHSFile(inp){
   rd.onload=async function(e){
     const rows=parseCSV(e.target.result);
     if(!rows.length){showToast('File trống','error');return;}
-    if(!confirm('Import '+rows.length+' học sinh? Dữ liệu cũ sẽ được GIỮ LẠI.'))return;
-    showLoad('Đang import '+rows.length+' học sinh...');
-    const r=await API.importHS(rows);hideLoad();
-    if(r.success){showToast('Import '+r.added+' HS thành công'+(r.errors.length?' ('+r.errors.length+' lỗi)':''));loadHS();}
-    else showToast(r.error||'Lỗi','error');
+    if(!confirm('Import '+rows.length+' học sinh?'))return;
+    
+    // Gửi từng batch 20 HS để tránh timeout và giới hạn URL
+    const BATCH=20;
+    let totalAdded=0, totalErrors=[];
+    const batches=[];
+    for(let i=0;i<rows.length;i+=BATCH) batches.push(rows.slice(i,i+BATCH));
+    
+    showLoad('Đang import 0/'+rows.length+' học sinh...');
+    for(let i=0;i<batches.length;i++){
+      document.getElementById('loadMsg').textContent='Đang import '+(i*BATCH)+'/'+rows.length+' học sinh...';
+      try {
+        const res=await fetch(GAS_URL, {
+          method:'POST',
+          headers:{'Content-Type':'text/plain'},
+          body:JSON.stringify({action:'importHS',rows:batches[i]}),
+          redirect:'follow'
+        });
+        const text=await res.text();
+        const r=JSON.parse(text);
+        if(r.success){totalAdded+=r.added;if(r.errors)totalErrors=totalErrors.concat(r.errors);}
+        else{showToast('Lỗi batch '+(i+1)+': '+(r.error||'Unknown'),'error');break;}
+      } catch(ex) {
+        showToast('Lỗi kết nối batch '+(i+1)+': '+ex.message,'error');break;
+      }
+    }
+    hideLoad();
+    showToast('✅ Import thành công '+totalAdded+'/'+rows.length+' học sinh'+(totalErrors.length?' ('+totalErrors.length+' lỗi)':'')+'!');
+    loadHS();
     inp.value='';
   };
   rd.readAsText(f,'UTF-8');
