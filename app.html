@@ -162,6 +162,7 @@ input[type=checkbox]{accent-color:var(--accent)}
     <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Import file CSV/Excel với các cột: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">ho_ten, ngay_sinh, lop, xe, phong, ghi_chu</code></p>
     <div class="bg">
       <button class="btn btn-p" onclick="document.getElementById('hsFile').click()">📂 Chọn file CSV</button>
+      <button class="btn btn-d btn-sm" onclick="delSelHS()">🗑 Xóa đã chọn</button>
       <button class="btn btn-d" onclick="confirmClearHS()" id="btnClearHS">🗑 Xóa toàn bộ</button>
       <button class="btn btn-o" onclick="dlHSTemplate()">📄 File mẫu</button>
       <input type="file" id="hsFile" accept=".csv,.xlsx" style="display:none" onchange="importHSFile(this)">
@@ -175,7 +176,7 @@ input[type=checkbox]{accent-color:var(--accent)}
     </div>
     <div id="hsPaging" style="font-size:13px;color:var(--text2);margin-bottom:8px"></div>
     <div class="tw">
-      <table><thead><tr><th>Họ và tên</th><th>Ngày sinh</th><th>Lớp</th><th>Xe</th><th>Phòng</th></tr></thead>
+      <table><thead><tr><th><input type="checkbox" onchange="chkAllHS(this)" id="ck-hs-all"></th><th>Họ và tên</th><th>Ngày sinh</th><th>Lớp</th><th>Xe</th><th>Phòng</th><th>Thao tác</th></tr></thead>
       <tbody id="hsTb"></tbody></table>
     </div>
   </div>
@@ -621,6 +622,31 @@ const TAB_LBL = {
   sc:'🚨 Sự Cố', pq:'⚙️ Cài Đặt'
 };
 
+
+// Làm sạch ngày sinh từ mọi format → dd/mm/yyyy
+function cleanDate(v) {
+  if (!v || v === '—' || v.trim() === '') return '—';
+  // Nếu đã đúng format dd/mm/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v;
+  // Nếu dạng d/m/yyyy hoặc d/m/yy
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) {
+    const p=v.split('/');
+    return String(p[0]).padStart(2,'0')+'/'+String(p[1]).padStart(2,'0')+'/'+p[2];
+  }
+  // Nếu dạng Date string (GMT, UTC...)
+  try {
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) {
+      // Dùng UTC để tránh lệch múi giờ
+      const day = String(d.getUTCDate()).padStart(2,'0');
+      const mon = String(d.getUTCMonth()+1).padStart(2,'0');
+      const yr = d.getUTCFullYear();
+      return day+'/'+mon+'/'+yr;
+    }
+  } catch(e) {}
+  return v;
+}
+
 // ================================================================
 // KHỞI TẠO
 // ================================================================
@@ -690,16 +716,25 @@ async function loadHS(p){
   fillHSFilters();
 }
 function renderHS(list){
-  const b=document.getElementById('hsTb');
-  if(!list.length){b.innerHTML='<tr><td colspan="5"><div class="es"><div class="ei">📋</div><p>Chưa có học sinh</p></div></td></tr>';return;}
-  b.innerHTML=list.map(r=>{
-    // Làm sạch ngày sinh - chỉ lấy phần dd/mm/yyyy
-    let ns = r.ngay_sinh||'—';
-    if(ns.includes('GMT')||ns.includes('00:00:00')){
-      try{const d=new Date(ns);ns=String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}catch(e){}
-    }
-    return '<tr><td><strong>'+r.ho_ten+'</strong></td><td>'+ns+'</td><td>'+r.lop+'</td><td>'+(r.ten_xe||'—')+'</td><td>'+(r.ten_phong||'—')+'</td></tr>';
-  }).join('');
+  var b=document.getElementById('hsTb');
+  if(!list.length){b.innerHTML='<tr><td colspan="7"><div class="es"><div class="ei">📋</div><p>Chưa có học sinh</p></div></td></tr>';return;}
+  var rows='';
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    rows+='<tr>'+
+      '<td><input type="checkbox" class="ck-hs" data-id="'+r.id+'"></td>'+
+      '<td><strong>'+r.ho_ten+'</strong></td>'+
+      '<td>'+cleanDate(r.ngay_sinh)+'</td>'+
+      '<td>'+r.lop+'</td>'+
+      '<td>'+(r.ten_xe||'—')+'</td>'+
+      '<td>'+(r.ten_phong||'—')+'</td>'+
+      '<td>'+
+        '<button class="btn btn-w btn-sm" onclick="editHS(this)" data-id="'+r.id+'">✏️</button> '+
+        '<button class="btn btn-d btn-sm" onclick="delOneHS(this)" data-id="'+r.id+'" data-ten="'+r.ho_ten.replace(/"/g,'')+'">🗑</button>'+
+      '</td>'+
+    '</tr>';
+  }
+  b.innerHTML=rows;
   document.getElementById('hsPaging').textContent='Tổng: '+list.length+' học sinh';
 }
 function filterHS(){
@@ -761,6 +796,56 @@ function importHSFile(inp){
   };
   rd.readAsText(f,'UTF-8');
 }
+
+
+function chkAllHS(cb){document.querySelectorAll('.ck-hs').forEach(c=>c.checked=cb.checked);}
+async function delSelHS(){
+  const cks=document.querySelectorAll('.ck-hs:checked');
+  if(!cks.length){showToast('Chọn ít nhất 1 học sinh','error');return;}
+  if(!confirm('Xóa '+cks.length+' học sinh đã chọn?'))return;
+  showLoad('Đang xóa...');
+  for(const c of cks) await API.deleteHS(c.dataset.id);
+  hideLoad(); showToast('Đã xóa '+cks.length+' học sinh!'); loadHS();
+}
+
+function editHS(btn){
+  var id=btn.dataset.id;
+  const r=hsAll.find(x=>x.id===id); if(!r) return;
+  // Điền vào form edit modal
+  document.getElementById('hs-edit-id').value=id;
+  document.getElementById('hs-edit-ten').value=r.ho_ten;
+  document.getElementById('hs-edit-ns').value=r.ngay_sinh||'';
+  document.getElementById('hs-edit-lop').value=r.lop;
+  document.getElementById('hs-edit-xe').value=r.ten_xe||'';
+  document.getElementById('hs-edit-phong').value=r.ten_phong||'';
+  document.getElementById('hsEditModal').style.display='flex';
+}
+async function saveEditHS(){
+  const id=document.getElementById('hs-edit-id').value;
+  const d={
+    id:id,
+    ho_ten:document.getElementById('hs-edit-ten').value.trim(),
+    ngay_sinh:document.getElementById('hs-edit-ns').value.trim(),
+    lop:document.getElementById('hs-edit-lop').value.trim(),
+    ten_xe:document.getElementById('hs-edit-xe').value.trim(),
+    ten_phong:document.getElementById('hs-edit-phong').value.trim()
+  };
+  if(!d.ho_ten){showToast('Nhập họ tên','error');return;}
+  showLoad('Đang lưu...');
+  const r=await API.updateHS(d); hideLoad();
+  if(r.success){showToast('Cập nhật thành công!');closeHSModal();loadHS();}
+  else showToast(r.error||'Lỗi','error');
+}
+async function delOneHS(btn){
+  var id=btn.dataset.id, ten=btn.dataset.ten;
+  if(!confirm('Xóa học sinh: '+ten+'?'))return;
+  showLoad('Đang xóa...');
+  const r=await API.deleteHS(id); hideLoad();
+  if(r.success){showToast('Đã xóa '+ten+'!');loadHS();}
+  else showToast(r.error||'Lỗi','error');
+}
+function closeHSModal(){document.getElementById('hsEditModal').style.display='none';}
+
 async function confirmClearHS(){
   if(!confirm('XÓA TOÀN BỘ học sinh?\n\nThao tác này KHÔNG THỂ hoàn tác!'))return;
   if(!confirm('Xác nhận lần 2: Xóa hết dữ liệu học sinh?'))return;
