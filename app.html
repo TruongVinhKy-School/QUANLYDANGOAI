@@ -270,7 +270,7 @@ input[type=checkbox]{accent-color:var(--gl)}
   <div class="card" style="margin-bottom:12px">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
       <div class="fg"><label>Lọc sự kiện</label><select id="qlc-sk" onchange="loadDash()"><option value="">Tất cả</option></select></div>
-      <div class="fg"><label>&nbsp;</label><button class="btn btn-b" onclick="loadDash()">🔄 Làm mới</button></div>
+      <div class="fg"><label>&nbsp;</label><button class="btn btn-b" onclick="loadDash();showToast('Đang cập nhật...','warning')">🔄 Làm mới</button></div>
     </div>
   </div>
   <div class="sub-tabs">
@@ -1008,41 +1008,39 @@ async function resetDD(type){
   var skId=V('qltt-sk');
   if(!skId){showToast('Chọn sự kiện trước','error');return;}
   var xeId=V('qltt-xe'),phId=V('qltt-ph');
-  var id=type==='xe'?xeId:phId;
-  if(!id){showToast('Chọn xe/phòng trước','error');return;}
-  if(!confirm('Xóa toàn bộ dữ liệu điểm danh sự kiện này cho '+(type==='xe'?'xe':'phòng')+' đã chọn?\nSau đó GV có thể điểm danh lại từ đầu.'))return;
-  showLoad('Đang xóa dữ liệu điểm danh...');
-  // Lấy danh sách điểm danh của sự kiện + xe/phòng này
-  var p={action:'getDiemDanh',su_kien_id:skId,loai:type};
+  if(type==='xe'&&!xeId){showToast('Chọn xe trước','error');return;}
+  if(type==='phong'&&!phId){showToast('Chọn phòng trước','error');return;}
+  if(!confirm('Xóa toàn bộ điểm danh sự kiện này?\nGV có thể điểm danh lại từ đầu.'))return;
+  showLoad('Đang xóa...');
+  // Gọi server-side xóa hàng loạt - nhanh và chắc chắn hơn
+  var p={action:'clearDiemDanh',su_kien_id:skId,loai:type};
   if(type==='xe')p.xe_id=xeId;else p.phong_id=phId;
   var r=await apiGet(p);
-  var list=r.data||[];
-  for(var i=0;i<list.length;i++){
-    await apiGet({action:'deleteDiemDanh',id:list[i].id});
-  }
   hideLoad();
-  showToast('Đã xóa '+list.length+' bản ghi điểm danh! Có thể điểm danh lại.');
-  if(type==='xe')loadQLTTXe();else loadQLTTPhong();
+  if(r.success){
+    showToast('Đã xóa '+r.deleted+' bản ghi! Có thể điểm danh lại.');
+    if(type==='xe')loadQLTTXe();else loadQLTTPhong();
+    loadDash();
+  } else showToast(r.error||'Lỗi','error');
 }
 
 // Xóa toàn bộ điểm danh của 1 sự kiện (Admin)
 async function clearDDSuKien(skId, tenSK){
   if(!confirm('Xóa TOÀN BỘ điểm danh của sự kiện:\n"'+tenSK+'"?\n\nThao tác này không thể hoàn tác!'))return;
   showLoad('Đang xóa...');
-  var r=await apiGet({action:'getDiemDanh',su_kien_id:skId});
-  var list=r.data||[];
-  for(var i=0;i<list.length;i++){
-    await apiGet({action:'deleteDiemDanh',id:list[i].id});
-  }
+  var r=await apiGet({action:'clearDiemDanh',su_kien_id:skId});
   hideLoad();
-  showToast('Đã xóa '+list.length+' bản ghi điểm danh sự kiện "'+tenSK+'"!');
-  loadSK();loadDash();
+  if(r.success){
+    showToast('Đã xóa '+r.deleted+' bản ghi ĐD sự kiện "'+tenSK+'"!');
+    loadSK();
+    loadDash();
+  } else showToast(r.error||'Lỗi','error');
 }
 
 // ================================================================
 // DASHBOARD
 // ================================================================
-function startDashTimer(){stopDashTimer();dashTimer=setInterval(loadDash,30000);}
+function startDashTimer(){stopDashTimer();dashTimer=setInterval(loadDash,15000);}
 function stopDashTimer(){if(dashTimer){clearInterval(dashTimer);dashTimer=null;}}
 function switchDash(mode,btn){
   document.querySelectorAll('#tc-qlc .stb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');
@@ -1051,7 +1049,7 @@ function switchDash(mode,btn){
 }
 async function loadDash(){
   var skId=V('qlc-sk');
-  var r=await apiGet({action:'getDashboard',su_kien_id:skId||''});
+  var r=await apiGet({action:'getDashboard',su_kien_id:skId||'',_t:Date.now()});
   if(!r.success)return;
   var tq=r.tong_quan||{};
   document.getElementById('dashStats').innerHTML=
@@ -1246,8 +1244,12 @@ async function delMySC(id){
   showLoad('Đang xóa...');
   var r=await apiGet({action:'deleteSuCo',id:id});
   hideLoad();
-  if(r.success){showToast('Đã xóa báo cáo!');loadSuCo();}
-  else showToast(r.error||'Lỗi xóa','error');
+  if(r.success){
+    showToast('Đã xóa báo cáo!');
+    loadSuCo();
+    // Cập nhật alert trên dashboard
+    loadDash();
+  } else showToast(r.error||'Lỗi xóa','error');
 }
 function openSCModal(id){
   var sc=scCache.find(function(r){return r.id===id;});
