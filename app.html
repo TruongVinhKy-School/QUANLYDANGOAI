@@ -729,9 +729,9 @@ function renderHS(list){
       '<td>'+r.lop+'</td>'+
       '<td>'+(r.ten_xe||'—')+'</td>'+
       '<td>'+(r.ten_phong||'—')+'</td>'+
-      '<td>'+
-        '<button class="btn btn-w btn-sm" onclick="editHS(this)" data-id="'+r.id+'">✏️</button> '+
-        '<button class="btn btn-d btn-sm" onclick="delOneHS(this)" data-id="'+r.id+'" data-ten="'+r.ho_ten.replace(/"/g,'')+'">🗑</button>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-w btn-sm" onclick="editHS(this)" data-id="'+r.id+'" style="display:inline-flex;margin-right:4px">✏️ Sửa</button>'+
+        '<button class="btn btn-d btn-sm" onclick="delOneHS(this)" data-id="'+r.id+'" data-ten="'+r.ho_ten.replace(/"/g,'')+'" style="display:inline-flex">🗑</button>'+
       '</td>'+
     '</tr>';
   }
@@ -897,30 +897,37 @@ async function delSelHS(){
 
 function editHS(btn){
   var id=btn.dataset.id;
-  const r=hsAll.find(x=>x.id===id); if(!r) return;
-  // Điền vào form edit modal
+  var r=hsAll.find(function(x){return x.id===id;});
+  if(!r){showToast('Không tìm thấy học sinh','error');return;}
   document.getElementById('hs-edit-id').value=id;
-  document.getElementById('hs-edit-ten').value=r.ho_ten;
-  document.getElementById('hs-edit-ns').value=r.ngay_sinh||'';
-  document.getElementById('hs-edit-lop').value=r.lop;
+  document.getElementById('hs-edit-ten').value=r.ho_ten||'';
+  document.getElementById('hs-edit-ns').value=cleanDate(r.ngay_sinh)||'';
+  document.getElementById('hs-edit-lop').value=r.lop||'';
   document.getElementById('hs-edit-xe').value=r.ten_xe||'';
   document.getElementById('hs-edit-phong').value=r.ten_phong||'';
   document.getElementById('hsEditModal').style.display='flex';
 }
 async function saveEditHS(){
-  const id=document.getElementById('hs-edit-id').value;
-  const d={
+  var id=document.getElementById('hs-edit-id').value;
+  var tenXe=document.getElementById('hs-edit-xe').value.trim();
+  var tenPhong=document.getElementById('hs-edit-phong').value.trim();
+  // Map tên → id
+  var xe=xeAll.find(function(x){return x.ten_xe===tenXe;})||{};
+  var ph=phongAll.find(function(p){return p.ten_phong===tenPhong;})||{};
+  var d={
     id:id,
     ho_ten:document.getElementById('hs-edit-ten').value.trim(),
     ngay_sinh:document.getElementById('hs-edit-ns').value.trim(),
     lop:document.getElementById('hs-edit-lop').value.trim(),
-    ten_xe:document.getElementById('hs-edit-xe').value.trim(),
-    ten_phong:document.getElementById('hs-edit-phong').value.trim()
+    xe_id:xe.id||'',
+    ten_xe:tenXe,
+    phong_id:ph.id||'',
+    ten_phong:tenPhong
   };
   if(!d.ho_ten){showToast('Nhập họ tên','error');return;}
   showLoad('Đang lưu...');
-  const r=await API.updateHS(d); hideLoad();
-  if(r.success){showToast('Cập nhật thành công!');closeHSModal();loadHS();}
+  var r=await API.updateHS(d); hideLoad();
+  if(r.success){showToast('Cập nhật thành công!');document.getElementById('hsEditModal').style.display='none';loadHS();}
   else showToast(r.error||'Lỗi','error');
 }
 async function delOneHS(btn){
@@ -1376,5 +1383,25 @@ function clearCheckedGV(containerId){
   document.querySelectorAll('#'+containerId+' .gv-ck').forEach(c=>c.checked=false);
 }
 </script>
+
+<!-- Modal sửa học sinh -->
+<div id="hsEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;box-shadow:0 8px 40px rgba(0,0,0,.25)">
+    <h3 style="color:#0f5222;margin-bottom:18px;font-size:16px;display:flex;align-items:center;gap:8px">✏️ Sửa Thông Tin Học Sinh</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="fg" style="grid-column:span 2"><label>Họ và tên <span class="req">*</span></label><input type="text" id="hs-edit-ten" placeholder="Họ và tên đầy đủ"></div>
+      <div class="fg"><label>Ngày sinh</label><input type="text" id="hs-edit-ns" placeholder="dd/mm/yyyy"></div>
+      <div class="fg"><label>Lớp</label><input type="text" id="hs-edit-lop" placeholder="VD: 12A5"></div>
+      <div class="fg"><label>Xe</label><input type="text" id="hs-edit-xe" placeholder="VD: Xe 01"></div>
+      <div class="fg"><label>Phòng</label><input type="text" id="hs-edit-phong" placeholder="VD: Phòng 101"></div>
+    </div>
+    <input type="hidden" id="hs-edit-id">
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-p" style="flex:1" onclick="saveEditHS()">💾 Lưu thay đổi</button>
+      <button class="btn btn-o" onclick="document.getElementById('hsEditModal').style.display='none'">✕ Hủy</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
