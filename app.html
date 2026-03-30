@@ -1388,12 +1388,6 @@ function clearCheckedGV(containerId){
 }
 </script>
 
-<!-- Modal sửa học sinh -->
-<div id="hsEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;box-shadow:0 8px 40px rgba(0,0,0,.25)">
-    <h3 style="color:#0f5222;margin-bottom:18px;font-size:16px;display:flex;align-items:center;gap:8px">✏️ Sửa Thông Tin Học Sinh</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="fg" style="grid-column:span 2"><label>Họ và tên <span class="req">*</span></label><input type="text" id="hs-edit-ten" placeholder="Họ và tên đầy đủ"></div>
       <div class="fg"><label>Ngày sinh</label><input type="text" id="hs-edit-ns" placeholder="dd/mm/yyyy"></div>
       <div class="fg"><label>Lớp</label><input type="text" id="hs-edit-lop" placeholder="VD: 12A5"></div>
       <div class="fg"><label>Xe</label><input type="text" id="hs-edit-xe" placeholder="VD: Xe 01"></div>
@@ -1407,5 +1401,53 @@ function clearCheckedGV(containerId){
   </div>
 </div>
 
+
+<!-- Modal sửa học sinh -->
+<div id="hsEditModal" onclick="if(event.target===this)this.style.display='none'"
+  style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:500px;box-shadow:0 8px 40px rgba(0,0,0,.3);position:relative">
+    <div style="font-size:16px;font-weight:700;color:#0f5222;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #e8f5e9">
+      ✏️ Sửa Thông Tin Học Sinh
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div style="grid-column:span 2;display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Họ và tên *</label>
+        <input id="hs-edit-ten" type="text" placeholder="Họ và tên đầy đủ"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Ngày sinh</label>
+        <input id="hs-edit-ns" type="text" placeholder="dd/mm/yyyy"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Lớp</label>
+        <input id="hs-edit-lop" type="text" placeholder="VD: 12A5"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Xe</label>
+        <input id="hs-edit-xe" type="text" placeholder="VD: Xe 01"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Phòng</label>
+        <input id="hs-edit-phong" type="text" placeholder="VD: Phòng 101"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+    </div>
+    <input type="hidden" id="hs-edit-id">
+    <div style="display:flex;gap:10px">
+      <button onclick="saveEditHS()"
+        style="flex:1;padding:11px;background:linear-gradient(135deg,#0f5222,#1e8c3e);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        💾 Lưu thay đổi
+      </button>
+      <button onclick="document.getElementById('hsEditModal').style.display='none'"
+        style="padding:11px 20px;background:#fff;border:1.5px solid #dce3ea;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#555">
+        ✕ Hủy
+      </button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
