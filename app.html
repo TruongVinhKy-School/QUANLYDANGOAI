@@ -1105,9 +1105,16 @@ async function loadDash(){
 var scCache=[];
 function prepSuCo(){
   S('sc-gv',CU.ho_ten);
-  if(CU.xe_ids){var xe=xeAll.filter(function(x){return CU.xe_ids.split(',').indexOf(x.id)>=0;});S('sc-xe-info',xe.map(function(x){return x.ten_xe;}).join(', '));}
-  if(CU.phong_ids){var ph=phongAll.filter(function(p){return CU.phong_ids.split(',').indexOf(p.id)>=0;});S('sc-ph-info',ph.map(function(p){return p.ten_phong;}).join(', '));}
-  if(hasRole('admin','quanly'))document.getElementById('sc-th-xl').style.display='table-cell';
+  // Tìm xe/phòng GV phụ trách từ danh sách xe và phòng
+  var myXe=xeAll.filter(function(x){return x.gv_ids&&x.gv_ids.split(',').indexOf(CU.id)>=0;});
+  var myPh=phongAll.filter(function(p){return p.gv_ids&&p.gv_ids.split(',').indexOf(CU.id)>=0;});
+  // Cũng check xe_ids/phong_ids từ tài khoản (backup)
+  if(!myXe.length&&CU.xe_ids) myXe=xeAll.filter(function(x){return CU.xe_ids.split(',').indexOf(x.id)>=0;});
+  if(!myPh.length&&CU.phong_ids) myPh=phongAll.filter(function(p){return CU.phong_ids.split(',').indexOf(p.id)>=0;});
+  S('sc-xe-info', myXe.length?myXe.map(function(x){return x.ten_xe;}).join(', '):'');
+  S('sc-ph-info', myPh.length?myPh.map(function(p){return p.ten_phong;}).join(', '):'');
+  // Hiện/ẩn các element theo role
+  if(hasRole('admin','quanly','bld'))document.getElementById('sc-th-xl').style.display='table-cell';
   loadSuCo();
 }
 async function loadSuCo(){
@@ -1138,19 +1145,26 @@ function renderSuCo(list){
 }
 async function submitSuCo(){
   var loai=V('sc-loai'),mo=V('sc-mo'),tt=V('sc-tt-gv');
+  var editId=V('sc-edit-id');
   if(!loai||!mo){showToast('Điền đầy đủ thông tin','error');return;}
-  var xe=xeAll.find(function(x){return V('sc-xe-info').indexOf(x.ten_xe)>=0;})||{};
-  var ph=phongAll.find(function(p){return V('sc-ph-info').indexOf(p.ten_phong)>=0;})||{};
-  showLoad('Đang gửi...');
-  var r=await apiGet({action:'createSuCo',gv_id:CU.id,gv_ten:CU.ho_ten,loai_sc:loai,mo_ta:mo,
-    trang_thai_sc:tt||'cho_xu_ly',
-    xe_id:xe.id||'',ten_xe:xe.ten_xe||'',phong_id:ph.id||'',ten_phong:ph.ten_phong||''});
+  showLoad(editId?'Đang cập nhật...':'Đang gửi...');
+  var r;
+  if(editId){
+    // Cập nhật báo cáo cũ
+    r=await apiGet({action:'updateSuCo',id:editId,loai_sc:loai,mo_ta:mo,trang_thai_sc:tt||'cho_xu_ly'});
+  } else {
+    // Tạo báo cáo mới
+    var xeInfo=V('sc-xe-info'),phInfo=V('sc-ph-info');
+    var xe=xeAll.find(function(x){return xeInfo.indexOf(x.ten_xe)>=0;})||{};
+    var ph=phongAll.find(function(p){return phInfo.indexOf(p.ten_phong)>=0;})||{};
+    r=await apiGet({action:'createSuCo',gv_id:CU.id,gv_ten:CU.ho_ten,loai_sc:loai,mo_ta:mo,
+      trang_thai_sc:tt||'cho_xu_ly',
+      xe_id:xe.id||'',ten_xe:xe.ten_xe||'',phong_id:ph.id||'',ten_phong:ph.ten_phong||''});
+  }
   hideLoad();
   if(r.success){
-    showToast('Đã gửi báo cáo sự cố!');
-    S('sc-loai','');S('sc-mo','');S('sc-tt-gv','cho_xu_ly');
-    document.getElementById('sc-count').textContent='0/300';
-    document.getElementById('sc-edit-id').value='';
+    showToast(editId?'Đã cập nhật báo cáo!':'Đã gửi báo cáo sự cố!');
+    huySuaSC();
     loadSuCo();
   } else showToast(r.error||'Lỗi','error');
 }
@@ -1159,13 +1173,27 @@ async function submitSuCo(){
 function editMySC(id){
   var sc=scCache.find(function(r){return r.id===id;});
   if(!sc){showToast('Không tìm thấy','error');return;}
-  S('sc-loai',sc.loai_sc);S('sc-mo',sc.mo_ta);S('sc-tt-gv',sc.trang_thai_sc||'cho_xu_ly');
+  S('sc-loai',sc.loai_sc);
+  S('sc-mo',sc.mo_ta);
+  S('sc-tt-gv',sc.trang_thai_sc||'cho_xu_ly');
   document.getElementById('sc-count').textContent=(sc.mo_ta||'').length+'/300';
   document.getElementById('sc-edit-id').value=id;
-  // Đổi nút thành "Cập nhật"
-  document.querySelector('#tc-sc .btn-d').textContent='💾 Cập nhật báo cáo';
-  window.scrollTo(0,200);
-  showToast('Đang sửa báo cáo sự cố...','warning');
+  // Đổi giao diện sang mode sửa
+  document.getElementById('btnGuiSC').textContent='💾 Cập nhật báo cáo';
+  document.getElementById('btnGuiSC').style.background='var(--warn)';
+  document.getElementById('btnHuySua').style.display='block';
+  // Scroll lên form
+  document.getElementById('tc-sc').scrollIntoView({behavior:'smooth'});
+  showToast('Đang sửa báo cáo — nhớ bấm Cập nhật sau khi xong!','warning');
+}
+
+function huySuaSC(){
+  document.getElementById('sc-edit-id').value='';
+  S('sc-loai','');S('sc-mo','');S('sc-tt-gv','cho_xu_ly');
+  document.getElementById('sc-count').textContent='0/300';
+  document.getElementById('btnGuiSC').textContent='🚨 Gửi báo cáo';
+  document.getElementById('btnGuiSC').style.background='';
+  document.getElementById('btnHuySua').style.display='none';
 }
 
 // GV xóa báo cáo của mình
