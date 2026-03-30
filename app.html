@@ -735,7 +735,7 @@ async function importHSFile(inp){
     if(!rows.length){showToast('File trống','error');return;}
     var prev=rows.slice(0,3).map(function(r){return r.ho_ten||'?';}).join(', ');
     if(!confirm('Tìm thấy '+rows.length+' HS.\nVD: '+prev+'\n\nTiếp tục?'))return;
-    var batches=[],BATCH=20;
+    var batches=[],BATCH=20,totalUpdated=0;
     for(var i=0;i<rows.length;i+=BATCH)batches.push(rows.slice(i,i+BATCH));
     showLoad('Đang import...');
     var total=0;
@@ -744,7 +744,8 @@ async function importHSFile(inp){
       var r=await apiPost({action:'importHS',rows:batches[j]});
       if(r.success)total+=r.added;else{hideLoad();showToast('Lỗi: '+(r.error||'Unknown'),'error');break;}
     }
-    hideLoad();showToast('Import '+total+'/'+rows.length+' HS thành công!');loadHS();
+    hideLoad();// Lấy số updated từ response cuối
+showToast('Import xong! Thêm mới: '+total+' | Cập nhật: '+totalUpdated);loadHS();
   }catch(ex){hideLoad();showToast('Lỗi: '+ex.message,'error');}
   inp.value='';
 }
