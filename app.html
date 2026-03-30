@@ -305,9 +305,10 @@ input[type=checkbox]{accent-color:var(--gl)}
         <textarea id="sc-mo" rows="3" maxlength="300" placeholder="Mô tả chi tiết..." style="resize:vertical" oninput="document.getElementById('sc-count').textContent=this.value.length+'/300'"></textarea>
       </div>
       <div class="fg">
-        <label>Trạng thái báo cáo</label>
+        <label>Trạng thái xử lý</label>
         <select id="sc-tt-gv">
           <option value="cho_xu_ly">⏳ Chờ xử lý</option>
+          <option value="da_xu_ly">✅ Đã xử lý</option>
           <option value="chuyen_cap_tren">📤 Chuyển cấp trên</option>
         </select>
       </div>
@@ -1238,16 +1239,14 @@ function huySuaSC(){
   document.getElementById('btnHuySua').style.display='none';
 }
 
-// GV xóa báo cáo của mình
+// Xóa báo cáo sự cố
 async function delMySC(id){
   if(!confirm('Xóa báo cáo sự cố này?'))return;
-  showLoad();
-  var r=await apiGet({action:'updateSuCo',id:id,da_xu_ly:'deleted'});
-  // Thực ra xóa hẳn
-  var r2=await apiGet({action:'deleteSuCo',id:id});
+  showLoad('Đang xóa...');
+  var r=await apiGet({action:'deleteSuCo',id:id});
   hideLoad();
-  if(r2.success||r.success){showToast('Đã xóa báo cáo!');loadSuCo();}
-  else showToast('Lỗi xóa','error');
+  if(r.success){showToast('Đã xóa báo cáo!');loadSuCo();}
+  else showToast(r.error||'Lỗi xóa','error');
 }
 function openSCModal(id){
   var sc=scCache.find(function(r){return r.id===id;});
