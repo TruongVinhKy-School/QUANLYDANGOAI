@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <title>Quản Lý Chuyến Đi TVK</title>
 <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#f0f4f8;--bg2:#ffffff;--bg3:#e8f5e9;
@@ -159,13 +160,13 @@ input[type=checkbox]{accent-color:var(--accent)}
 <div class="tc" id="tc-hs">
   <div class="card">
     <div class="card-title">📥 Import Danh Sách Học Sinh</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Import file CSV/Excel với các cột: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">ho_ten, ngay_sinh, lop, xe, phong, ghi_chu</code></p>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Import file <strong>Excel (.xlsx)</strong> hoặc CSV với các cột: <code style="background:var(--bg3);padding:2px 6px;border-radius:4px;font-size:12px">ho_ten, ngay_sinh, lop, xe, phong, ghi_chu</code></p>
     <div class="bg">
-      <button class="btn btn-p" onclick="document.getElementById('hsFile').click()">📂 Chọn file CSV</button>
+      <button class="btn btn-p" onclick="document.getElementById('hsFile').click()">📂 Chọn file Excel/CSV</button>
       <button class="btn btn-d btn-sm" onclick="delSelHS()">🗑 Xóa đã chọn</button>
       <button class="btn btn-d" onclick="confirmClearHS()" id="btnClearHS">🗑 Xóa toàn bộ</button>
       <button class="btn btn-o" onclick="dlHSTemplate()">📄 File mẫu</button>
-      <input type="file" id="hsFile" accept=".csv,.xlsx" style="display:none" onchange="importHSFile(this)">
+      <input type="file" id="hsFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importHSFile(this)">
     </div>
   </div>
   <div class="card">
@@ -751,50 +752,136 @@ function fillHSFilters(){
   fph.innerHTML='<option value="">Tất cả phòng</option>'+phongAll.map(p=>'<option value="'+p.id+'">'+p.ten_phong+'</option>').join('');
 }
 function dlHSTemplate(){
-  const csv='ho_ten,ngay_sinh,lop,xe,phong,ghi_chu\nNguyễn Văn A,01/01/2010,10A1,Xe 01,Phòng 101,';
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));a.download='mau_hoc_sinh.csv';a.click();
+  // Tạo file Excel mẫu bằng SheetJS
+  try {
+    const wb=XLSX.utils.book_new();
+    const data=[
+      ['ho_ten','ngay_sinh','lop','xe','phong','ghi_chu'],
+      ['Nguyễn Văn A','01/01/2010','10A1','Xe 01','Phòng 101',''],
+      ['Trần Thị B','15/06/2009','11A2','Xe 02','Phòng 102',''],
+      ['Lê Văn C','20/03/2010','12A3','Xe 03','Phòng 103',''],
+    ];
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    // Đặt độ rộng cột
+    ws['!cols']=[{wch:25},{wch:15},{wch:10},{wch:10},{wch:12},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,'Danh sách HS');
+    XLSX.writeFile(wb,'mau_hoc_sinh.xlsx');
+    showToast('Đã tải file mẫu Excel!');
+  } catch(e) {
+    // Fallback CSV
+    const csv='ho_ten,ngay_sinh,lop,xe,phong,ghi_chu\nNguyễn Văn A,01/01/2010,10A1,Xe 01,Phòng 101,';
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv'}));a.download='mau_hoc_sinh.csv';a.click();
+  }
 }
-function importHSFile(inp){
-  const f=inp.files[0];if(!f)return;
-  const rd=new FileReader();
-  rd.onload=async function(e){
-    // Xóa BOM nếu có
-    if(e.target.result.charCodeAt(0)===0xFEFF) e.target.result = e.target.result.slice(1);
-    const rows=parseCSV(e.target.result);
-    console.log('Rows parsed:', rows.length, 'First row:', JSON.stringify(rows[0]));
+async function importHSFile(inp){
+  const f=inp.files[0]; if(!f) return;
+  const ext=f.name.split('.').pop().toLowerCase();
+  showLoad('Đang đọc file...');
+  try {
+    let rows=[];
+    if(ext==='xlsx'||ext==='xls'){
+      // Đọc Excel bằng SheetJS
+      rows = await readExcel(f);
+    } else {
+      // Đọc CSV
+      rows = await readCSV(f);
+    }
+    hideLoad();
     if(!rows.length){showToast('File trống hoặc không đọc được','error');return;}
-    if(!confirm('Import '+rows.length+' học sinh?'))return;
-    
-    // Gửi từng batch 20 HS để tránh timeout và giới hạn URL
+    // Preview trước khi import
+    const preview=rows.slice(0,3).map(r=>r.ho_ten||'(trống)').join(', ');
+    if(!confirm('Tìm thấy '+rows.length+' học sinh.\nVí dụ: '+preview+'\n\nTiếp tục import?'))return;
+    // Gửi từng batch 20 HS
     const BATCH=20;
     let totalAdded=0, totalErrors=[];
     const batches=[];
     for(let i=0;i<rows.length;i+=BATCH) batches.push(rows.slice(i,i+BATCH));
-    
     showLoad('Đang import 0/'+rows.length+' học sinh...');
     for(let i=0;i<batches.length;i++){
-      document.getElementById('loadMsg').textContent='Đang import '+(i*BATCH)+'/'+rows.length+' học sinh...';
-      try {
-        const res=await fetch(GAS_URL, {
-          method:'POST',
-          headers:{'Content-Type':'text/plain'},
-          body:JSON.stringify({action:'importHS',rows:batches[i]}),
-          redirect:'follow'
-        });
-        const text=await res.text();
-        const r=JSON.parse(text);
+      document.getElementById('loadMsg').textContent='Đang import '+Math.min((i+1)*BATCH,rows.length)+'/'+rows.length+'...';
+      try{
+        const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'importHS',rows:batches[i]}),redirect:'follow'});
+        const r=JSON.parse(await res.text());
         if(r.success){totalAdded+=r.added;if(r.errors)totalErrors=totalErrors.concat(r.errors);}
-        else{showToast('Lỗi batch '+(i+1)+': '+(r.error||'Unknown'),'error');break;}
-      } catch(ex) {
-        showToast('Lỗi kết nối batch '+(i+1)+': '+ex.message,'error');break;
-      }
+        else{hideLoad();showToast('Lỗi: '+(r.error||'Unknown'),'error');break;}
+      }catch(ex){hideLoad();showToast('Lỗi kết nối: '+ex.message,'error');break;}
     }
     hideLoad();
-    showToast('✅ Import thành công '+totalAdded+'/'+rows.length+' học sinh'+(totalErrors.length?' ('+totalErrors.length+' lỗi)':'')+'!');
+    showToast('✅ Import '+totalAdded+'/'+rows.length+' học sinh thành công'+(totalErrors.length?' | '+totalErrors.length+' lỗi':'')+'!');
     loadHS();
-    inp.value='';
+  } catch(ex) {
+    hideLoad();
+    showToast('Lỗi đọc file: '+ex.message,'error');
+  }
+  inp.value='';
+}
+
+// Đọc file Excel → array of objects
+function readExcel(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        // Lấy dữ liệu dạng array of arrays
+        const data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        if(data.length<2){resolve([]);return;}
+        // Chuẩn hóa header
+        const headers=data[0].map(h=>normalizeHeader(String(h).trim()));
+        const rows=[];
+        for(let i=1;i<data.length;i++){
+          const row=data[i];
+          if(!row.some(v=>v!=='')) continue; // Bỏ dòng trống
+          const obj={};
+          headers.forEach((h,j)=>{ obj[h]=row[j]!==undefined?String(row[j]).trim():''; });
+          if(obj.ho_ten) rows.push(obj);
+        }
+        resolve(rows);
+      }catch(ex){reject(ex);}
+    };
+    reader.onerror=reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// Đọc file CSV → array of objects  
+function readCSV(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        let text=e.target.result;
+        // Xóa BOM
+        if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
+        const lines=text.split('\n').map(l=>l.trim()).filter(Boolean);
+        if(lines.length<2){resolve([]);return;}
+        const headers=lines[0].split(',').map(h=>normalizeHeader(h.trim().replace(/"/g,'')));
+        const rows=lines.slice(1).map(line=>{
+          const vals=line.split(',').map(v=>v.trim().replace(/"/g,''));
+          const obj={};
+          headers.forEach((h,i)=>{obj[h]=vals[i]||'';});
+          return obj;
+        }).filter(r=>r.ho_ten);
+        resolve(rows);
+      }catch(ex){reject(ex);}
+    };
+    reader.onerror=reject;
+    reader.readAsText(file,'UTF-8');
+  });
+}
+
+// Chuẩn hóa tên cột - map các tên phổ biến → tên chuẩn
+function normalizeHeader(h){
+  const map={
+    'ho_ten':'ho_ten','họ và tên':'ho_ten','họ tên':'ho_ten','hoten':'ho_ten','ho ten':'ho_ten','tên':'ho_ten',
+    'ngay_sinh':'ngay_sinh','ngày sinh':'ngay_sinh','ngaysinh':'ngay_sinh','sinh ngày':'ngay_sinh','ngày/tháng/năm sinh':'ngay_sinh',
+    'lop':'lop','lớp':'lop',
+    'xe':'xe','số xe':'xe','xe số':'xe',
+    'phong':'phong','phòng':'phong','số phòng':'phong','phòng số':'phong',
+    'ghi_chu':'ghi_chu','ghi chú':'ghi_chu','ghichu':'ghi_chu','ghi chu':'ghi_chu'
   };
-  rd.readAsText(f,'UTF-8');
+  return map[h.toLowerCase()]||h.toLowerCase().replace(/\s+/g,'_');
 }
 
 
