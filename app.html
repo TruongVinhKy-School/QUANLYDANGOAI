@@ -718,24 +718,28 @@ async function loadHS(p){
 }
 function renderHS(list){
   var b=document.getElementById('hsTb');
-  if(!list.length){b.innerHTML='<tr><td colspan="7"><div class="es"><div class="ei">📋</div><p>Chưa có học sinh</p></div></td></tr>';return;}
-  var rows='';
+  if(!list.length){
+    b.innerHTML='<tr><td colspan="7"><div class="es"><div class="ei">📋</div><p>Chưa có học sinh</p></div></td></tr>';
+    return;
+  }
+  var html='';
   for(var i=0;i<list.length;i++){
     var r=list[i];
-    rows+='<tr>'+
-      '<td><input type="checkbox" class="ck-hs" data-id="'+r.id+'"></td>'+
-      '<td><strong>'+r.ho_ten+'</strong></td>'+
-      '<td>'+cleanDate(r.ngay_sinh)+'</td>'+
-      '<td>'+r.lop+'</td>'+
-      '<td>'+(r.ten_xe||'—')+'</td>'+
-      '<td>'+(r.ten_phong||'—')+'</td>'+
-      '<td style="white-space:nowrap">'+
-        '<button class="btn btn-w btn-sm" onclick="editHS(this)" data-id="'+r.id+'" style="display:inline-flex;margin-right:4px">✏️ Sửa</button>'+
-        '<button class="btn btn-d btn-sm" onclick="delOneHS(this)" data-id="'+r.id+'" data-ten="'+r.ho_ten.replace(/"/g,'')+'" style="display:inline-flex">🗑</button>'+
-      '</td>'+
-    '</tr>';
+    var ten=r.ho_ten.replace(/"/g,'&quot;');
+    html+='<tr style="border-bottom:1px solid #eee">';
+    html+='<td><input type="checkbox" class="ck-hs" data-id="'+r.id+'"></td>';
+    html+='<td><strong>'+r.ho_ten+'</strong></td>';
+    html+='<td>'+cleanDate(r.ngay_sinh)+'</td>';
+    html+='<td>'+r.lop+'</td>';
+    html+='<td>'+(r.ten_xe||'—')+'</td>';
+    html+='<td>'+(r.ten_phong||'—')+'</td>';
+    html+='<td><div style="display:flex;flex-direction:row;gap:4px;flex-wrap:nowrap">';
+    html+='<button style="background:#f39c12;color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;white-space:nowrap" onclick="editHS(this)" data-id="'+r.id+'">✏️ Sửa</button>';
+    html+='<button style="background:#e74c3c;color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px" onclick="delOneHS(this)" data-id="'+r.id+'" data-ten="'+ten+'">🗑</button>';
+    html+='</div></td>';
+    html+='</tr>';
   }
-  b.innerHTML=rows;
+  b.innerHTML=html;
   document.getElementById('hsPaging').textContent='Tổng: '+list.length+' học sinh';
 }
 function filterHS(){
