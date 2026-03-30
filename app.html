@@ -404,7 +404,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 
   <div class="card">
     <div class="card-title">📋 Lịch Sử Sự Cố</div>
-    <div class="tw"><table><thead><tr><th>Thời gian</th><th>GV</th><th>Loại</th><th>Mô tả</th><th>Xe/Phòng</th><th>T.Thái</th><th id="sc-th-xu-ly" style="display:none">Thao tác</th></tr></thead>
+    <div class="tw"><table><thead><tr><th>Thời gian</th><th>GV báo cáo</th><th>Loại sự cố</th><th>Mô tả</th><th>Xe/Phòng</th><th>T.Thái</th><th>Người XL / Biện pháp</th><th id="sc-th-xu-ly">Thao tác</th></tr></thead>
     <tbody id="scTb"></tbody></table></div>
   </div>
 </div>
@@ -1310,11 +1310,34 @@ async function loadSuCo(){
   const r=await API.getSuCo(p);renderSuCo(r.data||[]);
 }
 function renderSuCo(list){
-  const loaiMap={xe_hu:'🚗 Xe hư',tac_duong:'🚦 Tắc đường',suc_khoe:'🏥 Sức khỏe',thiet_bi_phong:'🔧 Thiết bị phòng',khac:'📌 Khác'};
-  const b=document.getElementById('scTb');
-  const canXuLy=hasRole('admin','quanly');
-  if(!list.length){b.innerHTML='<tr><td colspan="7"><div class="es"><div class="ei">✅</div><p>Không có sự cố</p></div></td></tr>';return;}
-  b.innerHTML=list.map(r=>'<tr><td>'+r.thoi_gian+'</td><td>'+r.gv_ten+'</td><td><span class="badge '+(r.loai_sc==='suc_khoe'?'b-err':'b-warn')+'">'+( loaiMap[r.loai_sc]||r.loai_sc)+'</span></td><td style="max-width:200px;white-space:normal">'+r.mo_ta+'</td><td>'+(r.ten_xe||r.ten_phong||'—')+'</td><td><span class="badge '+(r.da_xu_ly==='true'?'b-ok':'b-err')+'">'+(r.da_xu_ly==='true'?'✅ Đã xử lý':'⏳ Chưa xử lý')+'</span></td>'+(canXuLy?'<td>'+(r.da_xu_ly!=='true'?'<button class="btn btn-s btn-sm" onclick="xulySC(\''+r.id+'\')">✅ Đánh dấu xử lý</button>':'')+'</td>':'')+'</tr>').join('');
+  var loaiMap={xe_hu:'🚗 Xe hư',tac_duong:'🚦 Tắc đường',suc_khoe:'🏥 Sức khỏe',thiet_bi_phong:'🔧 Thiết bị phòng',khac:'📌 Khác'};
+  var b=document.getElementById('scTb');
+  var canXuLy=hasRole('admin','quanly');
+  window.scDataCache=list;
+  if(!list.length){b.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">✅</div><p>Không có sự cố</p></div></td></tr>';return;}
+  var html='';
+  for(var i=0;i<list.length;i++){
+    var r=list[i];
+    var xlNote=r.xu_ly_note||'';
+    var daxl=r.da_xu_ly==='true';
+    html+='<tr>';
+    html+='<td style="white-space:nowrap;font-size:12px">'+r.thoi_gian+'</td>';
+    html+='<td><strong>'+r.gv_ten+'</strong></td>';
+    var loaiClass=r.loai_sc==='suc_khoe'?'b-err':'b-warn';
+    html+='<td><span class="badge '+loaiClass+'">'+(loaiMap[r.loai_sc]||r.loai_sc)+'</span></td>';
+    html+='<td style="max-width:180px;white-space:normal;font-size:13px">'+r.mo_ta+'</td>';
+    html+='<td>'+(r.ten_xe||r.ten_phong||'—')+'</td>';
+    var bdg=daxl?'<span class="badge b-ok">Đã xử lý</span>':'<span class="badge b-err">Chưa xử lý</span>';
+    html+='<td>'+bdg+'</td>';
+    html+='<td style="max-width:200px;white-space:normal;font-size:12px;color:#0f5222">'+(xlNote||'<span style="color:#bbb">—</span>')+'</td>';
+    if(canXuLy){
+      var btnLabel=daxl?'Sửa':'Xử lý';
+      var btnColor=daxl?'#95a5a6':'#1e8c3e';
+      html+='<td><button onclick="xulySC(\''+r.id+'\')" style="background:'+btnColor+';color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;white-space:nowrap">'+btnLabel+'</button></td>';
+    }
+    html+='</tr>';
+  }
+  b.innerHTML=html;
 }
 async function submitSuCo(){
   const loai=V('sc-loai'),mo=V('sc-mo');
@@ -1328,8 +1351,46 @@ async function submitSuCo(){
   if(r.success){showToast('Đã gửi báo cáo sự cố!');S('sc-loai','');S('sc-mo','');updateCount();loadSuCo();}
   else showToast(r.error||'Lỗi','error');
 }
-async function xulySC(id){
-  showLoad();await API.updateSuCo({id:id,da_xu_ly:'true'});hideLoad();showToast('Đã đánh dấu xử lý!');loadSuCo();
+function xulySC(id){
+  // Tìm thông tin sự cố
+  var sc=null;
+  var rows=document.querySelectorAll('#scTb tr');
+  // Lấy từ scData cache
+  if(window.scDataCache){
+    sc=window.scDataCache.find(function(r){return r.id===id;});
+  }
+  document.getElementById('sc-xl-id').value=id;
+  document.getElementById('sc-nguoi-xl').value=CU.ho_ten||'';
+  document.getElementById('sc-bien-phap').value='';
+  document.getElementById('sc-ket-qua').value='da_xu_ly';
+  // Hiển thị info sự cố
+  var info='';
+  if(sc){
+    var loaiMap={xe_hu:'🚗 Xe hư',tac_duong:'🚦 Tắc đường',suc_khoe:'🏥 Sức khỏe',thiet_bi_phong:'🔧 Thiết bị phòng',khac:'📌 Khác'};
+    info='<strong>GV báo:</strong> '+sc.gv_ten+' &nbsp;|&nbsp; <strong>Loại:</strong> '+(loaiMap[sc.loai_sc]||sc.loai_sc)+'<br><strong>Mô tả:</strong> '+sc.mo_ta;
+  }
+  document.getElementById('scXuLyInfo').innerHTML=info||'Sự cố ID: '+id;
+  document.getElementById('scXuLyModal').style.display='flex';
+}
+
+async function saveXuLySC(){
+  var id=document.getElementById('sc-xl-id').value;
+  var nguoi=document.getElementById('sc-nguoi-xl').value.trim();
+  var bienPhap=document.getElementById('sc-bien-phap').value.trim();
+  var ketQua=document.getElementById('sc-ket-qua').value;
+  if(!nguoi||!bienPhap){showToast('Nhập người xử lý và biện pháp xử lý','error');return;}
+  showLoad('Đang lưu...');
+  var r=await API.updateSuCo({
+    id:id,
+    da_xu_ly: ketQua==='da_xu_ly'?'true':'false',
+    xu_ly_note: '['+nguoi+'] '+bienPhap+' ('+ketQua+')'
+  });
+  hideLoad();
+  if(r.success){
+    showToast('✅ Đã lưu kết quả xử lý!');
+    document.getElementById('scXuLyModal').style.display='none';
+    loadSuCo();
+  } else showToast(r.error||'Lỗi','error');
 }
 function updateCount(){const t=document.getElementById('sc-mo');const c=document.getElementById('sc-count');if(t&&c)c.textContent=(t.value.length)+'/300';}
 
@@ -1443,6 +1504,47 @@ function clearCheckedGV(containerId){
         💾 Lưu thay đổi
       </button>
       <button onclick="document.getElementById('hsEditModal').style.display='none'"
+        style="padding:11px 20px;background:#fff;border:1.5px solid #dce3ea;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#555">
+        ✕ Hủy
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal xử lý sự cố -->
+<div id="scXuLyModal" onclick="if(event.target===this)this.style.display='none'"
+  style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:9001;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:16px;padding:28px;width:100%;max-width:520px;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+    <div style="font-size:16px;font-weight:700;color:#e74c3c;margin-bottom:6px">🔧 Xử Lý Sự Cố</div>
+    <div id="scXuLyInfo" style="background:#fff3cd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#555;border-left:3px solid #f39c12"></div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Người xử lý *</label>
+        <input id="sc-nguoi-xl" type="text" placeholder="Tên người xử lý"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Biện pháp xử lý *</label>
+        <textarea id="sc-bien-phap" rows="3" placeholder="Mô tả biện pháp xử lý..." maxlength="500"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:12px;font-weight:600;color:#555">Kết quả xử lý</label>
+        <select id="sc-ket-qua"
+          style="padding:10px 12px;border:1.5px solid #dce3ea;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fff">
+          <option value="da_xu_ly">✅ Đã xử lý xong</option>
+          <option value="dang_xu_ly">⏳ Đang xử lý</option>
+          <option value="chuyen_cap_tren">📤 Chuyển cấp trên</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="sc-xl-id">
+    <div style="display:flex;gap:10px">
+      <button onclick="saveXuLySC()"
+        style="flex:1;padding:11px;background:linear-gradient(135deg,#0f5222,#1e8c3e);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        ✅ Xác nhận xử lý
+      </button>
+      <button onclick="document.getElementById('scXuLyModal').style.display='none'"
         style="padding:11px 20px;background:#fff;border:1.5px solid #dce3ea;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;color:#555">
         ✕ Hủy
       </button>
