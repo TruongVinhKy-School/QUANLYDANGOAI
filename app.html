@@ -311,7 +311,7 @@ input[type=checkbox]{accent-color:var(--gl)}
     <div class="ct">📋 Lịch Sử Sự Cố</div>
     <div class="tw"><table><thead><tr>
       <th>Thời gian</th><th>GV báo cáo</th><th>Loại</th><th>Mô tả</th><th>Xe/Phòng</th><th>T.Thái</th><th>Người XL / Biện pháp</th>
-      <th id="sc-th-xl" style="display:none">Thao tác</th>
+      <th>Thao tác</th>
     </tr></thead><tbody id="scTb"></tbody></table></div>
   </div>
 </div>
@@ -1137,22 +1137,61 @@ function renderSuCo(list){
   b.innerHTML=h;
 }
 async function submitSuCo(){
-  var loai=V('sc-loai'),mo=V('sc-mo');
-  if(!loai||!mo){showToast('Điền đầy đủ','error');return;}
+  var loai=V('sc-loai'),mo=V('sc-mo'),tt=V('sc-tt-gv');
+  if(!loai||!mo){showToast('Điền đầy đủ thông tin','error');return;}
   var xe=xeAll.find(function(x){return V('sc-xe-info').indexOf(x.ten_xe)>=0;})||{};
   var ph=phongAll.find(function(p){return V('sc-ph-info').indexOf(p.ten_phong)>=0;})||{};
-  showLoad();
-  var r=await apiGet({action:'createSuCo',gv_id:CU.id,gv_ten:CU.ho_ten,loai_sc:loai,mo_ta:mo,xe_id:xe.id||'',ten_xe:xe.ten_xe||'',phong_id:ph.id||'',ten_phong:ph.ten_phong||''});
+  showLoad('Đang gửi...');
+  var r=await apiGet({action:'createSuCo',gv_id:CU.id,gv_ten:CU.ho_ten,loai_sc:loai,mo_ta:mo,
+    trang_thai_sc:tt||'cho_xu_ly',
+    xe_id:xe.id||'',ten_xe:xe.ten_xe||'',phong_id:ph.id||'',ten_phong:ph.ten_phong||''});
   hideLoad();
-  if(r.success){showToast('Đã gửi báo cáo!');S('sc-loai','');S('sc-mo','');document.getElementById('sc-count').textContent='0/300';loadSuCo();}
-  else showToast(r.error||'Lỗi','error');
+  if(r.success){
+    showToast('Đã gửi báo cáo sự cố!');
+    S('sc-loai','');S('sc-mo','');S('sc-tt-gv','cho_xu_ly');
+    document.getElementById('sc-count').textContent='0/300';
+    document.getElementById('sc-edit-id').value='';
+    loadSuCo();
+  } else showToast(r.error||'Lỗi','error');
+}
+
+// GV sửa báo cáo của mình
+function editMySC(id){
+  var sc=scCache.find(function(r){return r.id===id;});
+  if(!sc){showToast('Không tìm thấy','error');return;}
+  S('sc-loai',sc.loai_sc);S('sc-mo',sc.mo_ta);S('sc-tt-gv',sc.trang_thai_sc||'cho_xu_ly');
+  document.getElementById('sc-count').textContent=(sc.mo_ta||'').length+'/300';
+  document.getElementById('sc-edit-id').value=id;
+  // Đổi nút thành "Cập nhật"
+  document.querySelector('#tc-sc .btn-d').textContent='💾 Cập nhật báo cáo';
+  window.scrollTo(0,200);
+  showToast('Đang sửa báo cáo sự cố...','warning');
+}
+
+// GV xóa báo cáo của mình
+async function delMySC(id){
+  if(!confirm('Xóa báo cáo sự cố này?'))return;
+  showLoad();
+  var r=await apiGet({action:'updateSuCo',id:id,da_xu_ly:'deleted'});
+  // Thực ra xóa hẳn
+  var r2=await apiGet({action:'deleteSuCo',id:id});
+  hideLoad();
+  if(r2.success||r.success){showToast('Đã xóa báo cáo!');loadSuCo();}
+  else showToast('Lỗi xóa','error');
 }
 function openSCModal(id){
   var sc=scCache.find(function(r){return r.id===id;});
-  var lm={xe_hu:'Xe hư',tac_duong:'Tắc đường',suc_khoe:'Sức khỏe',thiet_bi_phong:'Thiết bị phòng',khac:'Khác'};
+  var lm={xe_hu:'🚗 Xe hư',tac_duong:'🚦 Tắc đường',suc_khoe:'🏥 Sức khỏe',thiet_bi_phong:'🔧 Thiết bị phòng',khac:'📌 Khác'};
   document.getElementById('sc-xl-id').value=id;
-  S('sc-xl-nguoi',CU.ho_ten);S('sc-xl-bp','');S('sc-xl-kq','da_xu_ly');
-  document.getElementById('scModalInfo').innerHTML=sc?('<strong>GV:</strong> '+sc.gv_ten+' | <strong>Loại:</strong> '+(lm[sc.loai_sc]||sc.loai_sc)+'<br><strong>Mô tả:</strong> '+sc.mo_ta):'';
+  S('sc-xl-nguoi',CU.ho_ten);
+  // Giữ lại biện pháp cũ nếu có
+  S('sc-xl-bp',sc&&sc.xu_ly_note?sc.xu_ly_note.replace(/^\[[^\]]+\]\s*/,''):'');
+  S('sc-xl-kq','da_xu_ly');
+  document.getElementById('scModalInfo').innerHTML=sc?(
+    '<strong>GV báo cáo:</strong> '+sc.gv_ten+'<br>'+
+    '<strong>Loại:</strong> '+(lm[sc.loai_sc]||sc.loai_sc)+'<br>'+
+    '<strong>Mô tả:</strong> '+sc.mo_ta
+  ):'';
   document.getElementById('scModal').style.display='flex';
 }
 async function saveXuLySC(){
