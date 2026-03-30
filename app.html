@@ -304,8 +304,19 @@ input[type=checkbox]{accent-color:var(--gl)}
         <label>Diễn giải <span class="req">*</span> <span id="sc-count" style="font-size:11px;color:var(--tl)">0/300</span></label>
         <textarea id="sc-mo" rows="3" maxlength="300" placeholder="Mô tả chi tiết..." style="resize:vertical" oninput="document.getElementById('sc-count').textContent=this.value.length+'/300'"></textarea>
       </div>
+      <div class="fg">
+        <label>Trạng thái báo cáo</label>
+        <select id="sc-tt-gv">
+          <option value="cho_xu_ly">⏳ Chờ xử lý</option>
+          <option value="chuyen_cap_tren">📤 Chuyển cấp trên</option>
+        </select>
+      </div>
     </div>
-    <button class="btn btn-d" onclick="submitSuCo()">🚨 Gửi báo cáo</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      <button class="btn btn-d" id="btnGuiSC" onclick="submitSuCo()">🚨 Gửi báo cáo</button>
+      <button class="btn btn-o" id="btnHuySua" style="display:none" onclick="huySuaSC()">✕ Hủy sửa</button>
+    </div>
+    <input type="hidden" id="sc-edit-id">
   </div>
   <div class="card">
     <div class="ct">📋 Lịch Sử Sự Cố</div>
@@ -1123,23 +1134,47 @@ async function loadSuCo(){
   scCache=r.data||[];renderSuCo(scCache);
 }
 function renderSuCo(list){
-  var lm={xe_hu:'Xe hư',tac_duong:'Tắc đường',suc_khoe:'Sức khỏe',thiet_bi_phong:'Thiết bị phòng',khac:'Khác'};
+  var lm={xe_hu:'🚗 Xe hư',tac_duong:'🚦 Tắc đường',suc_khoe:'🏥 Sức khỏe',thiet_bi_phong:'🔧 Thiết bị phòng',khac:'📌 Khác'};
+  var ttMap={
+    'cho_xu_ly':{cls:'b-warn',lbl:'⏳ Chờ xử lý'},
+    'chuyen_cap_tren':{cls:'b-blue',lbl:'📤 Chuyển cấp trên'},
+    'dang_xu_ly':{cls:'b-warn',lbl:'🔧 Đang xử lý'},
+    'da_xu_ly':{cls:'b-ok',lbl:'✅ Đã xử lý'}
+  };
   var b=document.getElementById('scTb');
-  var canXL=hasRole('admin','quanly');
+  var isQL=hasRole('admin','quanly','bld');
   if(!list.length){b.innerHTML='<tr><td colspan="8"><div class="es"><div class="ei">✅</div><p>Không có sự cố</p></div></td></tr>';return;}
   var h='';
   for(var i=0;i<list.length;i++){
-    var r=list[i],daxl=r.da_xu_ly==='true';
-    h+='<tr>'+
-      '<td style="font-size:12px;white-space:nowrap">'+r.thoi_gian+'</td>'+
-      '<td><strong>'+r.gv_ten+'</strong></td>'+
-      '<td><span class="badge '+(r.loai_sc==='suc_khoe'?'b-err':'b-warn')+'">'+(lm[r.loai_sc]||r.loai_sc)+'</span></td>'+
-      '<td style="max-width:180px;white-space:normal;font-size:13px">'+r.mo_ta+'</td>'+
-      '<td>'+(r.ten_xe||r.ten_phong||'—')+'</td>'+
-      '<td><span class="badge '+(daxl?'b-ok':'b-err')+'">'+(daxl?'Đã xử lý':'Chưa xử lý')+'</span></td>'+
-      '<td style="max-width:200px;white-space:normal;font-size:12px;color:var(--g)">'+(r.xu_ly_note||'<span style="color:#bbb">—</span>')+'</td>';
-    if(canXL)h+='<td><button onclick="openSCModal(\''+r.id+'\')" style="background:'+(daxl?'#95a5a6':'var(--gl)')+';color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px">'+(daxl?'Sửa':'Xử lý')+'</button></td>';
-    h+='</tr>';
+    var r=list[i];
+    var tt=r.trang_thai_sc||'cho_xu_ly';
+    var ttInfo=ttMap[tt]||ttMap['cho_xu_ly'];
+    var daxl=r.da_xu_ly==='true';
+    var isMyReport=(r.gv_id===CU.id);
+    var chuaXL=!daxl&&tt!=='da_xu_ly';
+    h+='<tr>';
+    h+='<td style="font-size:12px;white-space:nowrap">'+r.thoi_gian+'</td>';
+    h+='<td><strong>'+r.gv_ten+'</strong></td>';
+    h+='<td><span class="badge '+(r.loai_sc==='suc_khoe'?'b-err':'b-warn')+'">'+(lm[r.loai_sc]||r.loai_sc)+'</span></td>';
+    h+='<td style="max-width:160px;white-space:normal;font-size:13px">'+r.mo_ta+'</td>';
+    h+='<td style="font-size:12px">'+(r.ten_xe||r.ten_phong||'—')+'</td>';
+    h+='<td><span class="badge '+ttInfo.cls+'">'+ttInfo.lbl+'</span></td>';
+    h+='<td style="max-width:180px;white-space:normal;font-size:12px;color:var(--g)">'+formatXuLyNote(r.xu_ly_note)+'</td>';
+    h+='<td style="white-space:nowrap">';
+    // GV sửa/xóa báo cáo của chính mình khi chưa xử lý xong
+    if(isMyReport&&chuaXL){
+      h+='<button onclick="editMySC(\''+r.id+'\')" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px;margin-right:3px">✏️ Sửa</button>';
+      h+='<button onclick="delMySC(\''+r.id+'\')" style="background:var(--err);color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px">🗑</button>';
+    }
+    // QL/BLĐ xử lý khi trạng thái "chuyển cấp trên"
+    if(isQL&&(tt==='chuyen_cap_tren'||daxl)){
+      h+='<button onclick="openSCModal(\''+r.id+'\')" style="background:'+(daxl?'#95a5a6':'var(--gl)')+';color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px;margin-left:2px">'+(daxl?'✏️':'🔧 Xử lý')+'</button>';
+    }
+    // Admin xóa bất kỳ
+    if(hasRole('admin')&&!isMyReport){
+      h+='<button onclick="delMySC(\''+r.id+'\')" style="background:#95a5a6;color:#fff;border:none;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:12px;margin-left:2px">🗑</button>';
+    }
+    h+='</td></tr>';
   }
   b.innerHTML=h;
 }
@@ -1185,6 +1220,13 @@ function editMySC(id){
   // Scroll lên form
   document.getElementById('tc-sc').scrollIntoView({behavior:'smooth'});
   showToast('Đang sửa báo cáo — nhớ bấm Cập nhật sau khi xong!','warning');
+}
+
+
+function formatXuLyNote(note){
+  if(!note) return '<span style="color:#bbb">—</span>';
+  // Xóa phần (da_xu_ly) hoặc (dang_xu_ly) ở cuối
+  return note.replace(/\s*\([a-z_]+\)\s*$/,'');
 }
 
 function huySuaSC(){
