@@ -1243,7 +1243,7 @@ function prepSuCo(){
   S('sc-xe-info', myXe.length?myXe.map(function(x){return x.ten_xe;}).join(', '):'');
   S('sc-ph-info', myPh.length?myPh.map(function(p){return p.ten_phong;}).join(', '):'');
   // Hiện/ẩn các element theo role
-  if(hasRole('admin','quanly','bld'))document.getElementById('sc-th-xl').style.display='table-cell';
+  var scThXl=document.getElementById('sc-th-xl');if(scThXl&&hasRole('admin','quanly','bld'))scThXl.style.display='table-cell';
   loadSuCo();
 }
 async function loadSuCo(){
