@@ -1019,10 +1019,22 @@ function fillSKSelects(){
   var opts='<option value="">-- Chọn sự kiện --</option>'+skAll.filter(function(s){return s.trang_thai==='active';}).map(function(s){return '<option value="'+s.id+'">'+s.ten+'</option>';}).join('');
   ['qltt-sk','qlc-sk'].forEach(function(id){var e=document.getElementById(id);if(e)e.innerHTML=opts;});
 }
+
+async function toggleSKStatus(id, cur){
+  var newStatus = cur==='active'?'hidden':'active';
+  showLoad();
+  await apiGet({action:'updateSuKien',id:id,trang_thai:newStatus});
+  hideLoad();
+  showToast(newStatus==='active'?'Đã hiện sự kiện!':'Đã ẩn sự kiện!');
+  loadSK();
+}
+
 async function saveSK(){
-  var id=V('sk-id'),d={id:id,ten:V('sk-ten'),loai:V('sk-loai'),mo_ta:V('sk-mo'),thu_tu:V('sk-tt')};
+  var id=V('sk-id');
+  var tt=id?(skAll.find(function(s){return s.id===id;})||{}).trang_thai||'active':'active';
+  var d={id:id,ten:V('sk-ten'),loai:V('sk-loai'),mo_ta:V('sk-mo'),thu_tu:V('sk-tt'),trang_thai:tt};
   if(!d.ten){showToast('Nhập tên sự kiện','error');return;}
-  showLoad();var r=id?await apiGet({action:'updateSuKien',...d}):await apiGet({action:'createSuKien',...d});hideLoad();
+  showLoad();var r=id?await apiGet({action:'updateSuKien',id:id,ten:d.ten,loai:d.loai,mo_ta:d.mo_ta,thu_tu:d.thu_tu,trang_thai:d.trang_thai}):await apiGet({action:'createSuKien',ten:d.ten,loai:d.loai,mo_ta:d.mo_ta,thu_tu:d.thu_tu});hideLoad();
   if(r.success){showToast('Lưu thành công!');clearSKForm();loadSK();}else showToast(r.error||'Lỗi','error');
 }
 function fillSK(id){
