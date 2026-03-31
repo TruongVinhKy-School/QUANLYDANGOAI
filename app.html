@@ -1100,23 +1100,31 @@ function chkAllQLTT(type,v){
 function filterHSQLTT(type){if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
 async function submitDD(type){
   var skId=V('qltt-sk');if(!skId){showToast('Chọn sự kiện trước','error');return;}
+  var xeId=V('qltt-xe'), phId=V('qltt-ph');
   var cks=Array.from(document.querySelectorAll('#'+(type==='xe'?'xe':'ph')+'-hs-list .hs-ck:checked'));
   if(!cks.length){showToast('Chọn ít nhất 1 HS','error');return;}
   var imgs=type==='xe'?xeImgs:phImgs;
   var items=cks.map(function(c){return {hs_id:c.dataset.id,co_mat:'true',hinh_url:imgs.length?imgs[0]:''};});
   showLoad('Đang lưu...');
-  var r=await apiPost({action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items});
+  var payload={action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items};
+  if(type==='xe') payload.xe_id=xeId;
+  else payload.phong_id=phId;
+  var r=await apiPost(payload);
   hideLoad();
   if(r.success){showToast('Đã điểm danh '+items.length+' HS!');if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
   else showToast(r.error||'Lỗi','error');
 }
 async function submitVang(type){
   var skId=V('qltt-sk');if(!skId){showToast('Chọn sự kiện trước','error');return;}
+  var xeId=V('qltt-xe'), phId=V('qltt-ph');
   var cks=Array.from(document.querySelectorAll('#'+(type==='xe'?'xe':'ph')+'-hs-list .hs-ck:checked'));
   if(!cks.length){showToast('Chọn HS vắng','error');return;}
   var items=cks.map(function(c){return {hs_id:c.dataset.id,co_mat:'false'};});
   showLoad('Đang ghi vắng...');
-  var r=await apiPost({action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items});
+  var payload={action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items};
+  if(type==='xe') payload.xe_id=xeId;
+  else payload.phong_id=phId;
+  var r=await apiPost(payload);
   hideLoad();
   if(r.success){showToast('Đã ghi vắng '+items.length+' HS!');if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
   else showToast(r.error||'Lỗi','error');
