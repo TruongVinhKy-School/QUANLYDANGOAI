@@ -106,7 +106,7 @@ input[type=checkbox]{accent-color:var(--gl)}
 <div class="tc" id="tc-hs">
   <div class="card">
     <div class="ct">📥 Import Học Sinh</div>
-    <p style="font-size:13px;color:var(--tl);margin-bottom:12px">Import file <strong>Excel (.xlsx)</strong> hoặc CSV. Cột: <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px;font-size:12px">ho_ten, ngay_sinh, lop, xe, phong, ghi_chu</code></p>
+    <p style="font-size:13px;color:var(--tl);margin-bottom:12px">Import file <strong>Excel (.xlsx)</strong> hoặc CSV. Cột: <code style="background:#f5f5f5;padding:2px 6px;border-radius:4px;font-size:12px">ho_ten, ngay_sinh, lop, xe, phong, ks, ghi_chu</code></p>
     <div class="bg">
       <button class="btn btn-p" onclick="document.getElementById('hsFile').click()">📂 Chọn file Excel/CSV</button>
       <button class="btn btn-d btn-sm" onclick="delSelHS()">🗑 Xóa đã chọn</button>
@@ -157,7 +157,13 @@ input[type=checkbox]{accent-color:var(--gl)}
       <div class="ct">🏨 Thêm / Sửa Phòng</div>
       <div class="fr">
         <div class="fg"><label>Tên phòng <span class="req">*</span></label><input type="text" id="ph-ten" placeholder="VD: Phòng 101"></div>
-        <div class="fg"><label>Khách sạn</label><input type="text" id="ph-ks"></div>
+        <div class="fg"><label>Khách sạn</label>
+          <select id="ph-ks">
+            <option value="">-- Chọn khách sạn --</option>
+            <option value="K-Town">K-Town</option>
+            <option value="Wonderland">Wonderland</option>
+          </select>
+        </div>
         <div class="fg"><label>Số giường</label><input type="number" id="ph-sg" value="4"></div>
       </div>
       <div class="fg" style="margin-bottom:12px"><label>GV phụ trách</label><div id="ph-gv-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div></div>
@@ -167,7 +173,15 @@ input[type=checkbox]{accent-color:var(--gl)}
       </div>
       <input type="hidden" id="ph-id">
     </div>
-    <div class="tw"><table><thead><tr><th>Tên phòng</th><th>Khách sạn</th><th>GV phụ trách</th><th>Số HS</th><th>Thao tác</th></tr></thead><tbody id="phTb"></tbody></table></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+    <select id="ph-filter-ks" onchange="filterPhong()" style="padding:8px 12px;border:1.5px solid var(--bd);border-radius:8px;font-size:13px;font-family:inherit;outline:none">
+      <option value="">Tất cả khách sạn</option>
+      <option value="K-Town">K-Town</option>
+      <option value="Wonderland">Wonderland</option>
+    </select>
+    <button class="btn btn-o btn-sm" onclick="document.getElementById('ph-filter-ks').value='';filterPhong()">↺ Tất cả</button>
+  </div>
+  <div class="tw"><table><thead><tr><th>Tên phòng</th><th>Khách sạn</th><th>GV phụ trách</th><th>Số HS</th><th>Thao tác</th></tr></thead><tbody id="phTb"></tbody></table></div>
   </div>
 </div>
 
@@ -719,8 +733,13 @@ async function confirmClearHS(){
 function dlHSTemplate(){
   try{
     var wb=XLSX.utils.book_new();
-    var data=[['ho_ten','ngay_sinh','lop','xe','phong','ghi_chu'],['Nguyễn Văn A','01/01/2010','10A1','Xe 01','Phòng 101',''],['Trần Thị B','15/06/2009','11A2','Xe 02','Phòng 102','']];
-    var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:25},{wch:15},{wch:10},{wch:10},{wch:12},{wch:20}];
+    var data=[
+      ['ho_ten','ngay_sinh','lop','xe','phong','ks','ghi_chu'],
+      ['Nguyễn Văn A','01/01/2010','10A1','Xe 01','Phòng 101','K-Town',''],
+      ['Trần Thị B','15/06/2009','11A2','Xe 02','Phòng 201','Wonderland',''],
+      ['Lê Văn C','20/03/2010','12A3','Xe 03','Phòng 301','K-Town',''],
+    ];
+    var ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:25},{wch:15},{wch:10},{wch:10},{wch:12},{wch:14},{wch:20}];
     XLSX.utils.book_append_sheet(wb,ws,'Danh sách HS');XLSX.writeFile(wb,'mau_hoc_sinh.xlsx');
     showToast('Đã tải file mẫu!');
   }catch(e){showToast('Lỗi tạo file mẫu','error');}
@@ -792,7 +811,13 @@ function readCSVFile(file){
   });
 }
 function normHeader(h){
-  var map={'ho_ten':'ho_ten','họ và tên':'ho_ten','họ tên':'ho_ten','tên':'ho_ten','ngay_sinh':'ngay_sinh','ngày sinh':'ngay_sinh','lop':'lop','lớp':'lop','xe':'xe','phong':'phong','phòng':'phong','ghi_chu':'ghi_chu','ghi chú':'ghi_chu'};
+  var map={'ho_ten':'ho_ten','họ và tên':'ho_ten','họ tên':'ho_ten','tên':'ho_ten',
+    'ngay_sinh':'ngay_sinh','ngày sinh':'ngay_sinh',
+    'lop':'lop','lớp':'lop',
+    'xe':'xe','số xe':'xe',
+    'phong':'phong','phòng':'phong','số phòng':'phong',
+    'ks':'ks','khách sạn':'ks','khach san':'ks','hotel':'ks',
+    'ghi_chu':'ghi_chu','ghi chú':'ghi_chu'};
   return map[h.toLowerCase()]||h.toLowerCase().replace(/\s+/g,'_');
 }
 
@@ -838,10 +863,18 @@ function clearXeForm(){S('xe-id');S('xe-ten');S('xe-cho','45');S('xe-mo');clearG
 async function loadPhong(){
   var r=await apiGet({action:'getPhong'});phongAll=r.data||[];renderPhong();fillPhSelects();fillHSFilters();
 }
-function renderPhong(){
+
+function filterPhong(){
+  var ks=document.getElementById('ph-filter-ks')?document.getElementById('ph-filter-ks').value:'';
+  var list=ks?phongAll.filter(function(p){return p.khach_san===ks;}):phongAll;
+  renderPhong(list);
+}
+
+function renderPhong(list){
+  list=list||phongAll;
   var b=document.getElementById('phTb');
   if(!phongAll.length){b.innerHTML='<tr><td colspan="5"><div class="es"><div class="ei">🏨</div><p>Chưa có phòng</p></div></td></tr>';return;}
-  b.innerHTML=phongAll.map(function(r){
+  b.innerHTML=list.map(function(r){
     return '<tr><td><strong>'+r.ten_phong+'</strong></td><td>'+(r.khach_san||'—')+'</td><td>'+(r.gv_tens||'—')+'</td>'+
       '<td><span class="badge b-blue">'+(r.so_hs||0)+' HS</span></td>'+
       '<td style="white-space:nowrap"><button class="btn btn-w btn-sm" onclick="fillPhong(\''+r.id+'\')">✏️</button> <button class="btn btn-d btn-sm" onclick="delPhong(\''+r.id+'\')">🗑</button></td></tr>';
