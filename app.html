@@ -1031,7 +1031,7 @@ async function toggleSKStatus(id, cur){
 
 async function saveSK(){
   var id=V('sk-id');
-  var tt=id?(skAll.find(function(s){return s.id===id;})||{}).trang_thai||'active':'active';
+  var ttSel=document.getElementById('sk-tt-status');var tt=ttSel?ttSel.value:'active';
   var d={id:id,ten:V('sk-ten'),loai:V('sk-loai'),mo_ta:V('sk-mo'),thu_tu:V('sk-tt'),trang_thai:tt};
   if(!d.ten){showToast('Nhập tên sự kiện','error');return;}
   showLoad();var r=id?await apiGet({action:'updateSuKien',id:id,ten:d.ten,loai:d.loai,mo_ta:d.mo_ta,thu_tu:d.thu_tu,trang_thai:d.trang_thai}):await apiGet({action:'createSuKien',ten:d.ten,loai:d.loai,mo_ta:d.mo_ta,thu_tu:d.thu_tu});hideLoad();
@@ -1040,10 +1040,15 @@ async function saveSK(){
 function fillSK(id){
   var r=skAll.find(function(x){return x.id===id;});if(!r)return;
   S('sk-id',id);S('sk-ten',r.ten);S('sk-loai',r.loai);S('sk-mo',r.mo_ta||'');S('sk-tt',r.thu_tu||'10');
+  var sel=document.getElementById('sk-tt-status');
+  if(sel) sel.value=r.trang_thai||'active';
   window.scrollTo(0,0);showToast('Đang sửa: '+r.ten,'warning');
 }
 async function delSK(id){if(!confirm('Xóa sự kiện?'))return;showLoad();await apiGet({action:'deleteSuKien',id:id});hideLoad();showToast('Đã xóa!');loadSK();}
-function clearSKForm(){S('sk-id');S('sk-ten');S('sk-loai','ca_hai');S('sk-mo');S('sk-tt','10');}
+function clearSKForm(){
+  S('sk-id');S('sk-ten');S('sk-loai','ca_hai');S('sk-mo');S('sk-tt','10');
+  var sel=document.getElementById('sk-tt-status');if(sel)sel.value='active';
+}
 
 // ================================================================
 // QUẢN LÝ TRỰC TIẾP
