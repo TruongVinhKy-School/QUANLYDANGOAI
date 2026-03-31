@@ -803,10 +803,13 @@ async function importHSFile(inp){
     for(var j=0;j<batches.length;j++){
       document.getElementById('loadMsg').textContent='Đang import '+(j*BATCH)+'/'+rows.length+'...';
       var r=await apiPost({action:'importHS',rows:batches[j]});
-      if(r.success)total+=r.added;else{hideLoad();showToast('Lỗi: '+(r.error||'Unknown'),'error');break;}
+      console.log('Batch '+(j+1)+' response:', JSON.stringify(r));
+      if(r.success){total+=(r.added||0);totalUpdated+=(r.updated||0);}
+      else{hideLoad();showToast('Lỗi: '+(r.error||'Unknown'),'error');break;}
     }
-    hideLoad();// Lấy số updated từ response cuối
-showToast('Import xong! Thêm mới: '+total+' | Cập nhật: '+totalUpdated);loadHS();
+    hideLoad();
+    showToast('Import xong! ✅ Thêm mới: '+total+' | 🔄 Cập nhật: '+totalUpdated);
+    loadHS();
   }catch(ex){hideLoad();showToast('Lỗi: '+ex.message,'error');}
   inp.value='';
 }
