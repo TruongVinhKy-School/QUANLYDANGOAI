@@ -466,7 +466,7 @@ input[type=checkbox]{accent-color:var(--gl)}
 // ================================================================
 // CONFIG
 // ================================================================
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbxaYY8mpzZpRDQKy_5hRDvyh4i49EBMY-i4m41cMs_tRHIggJf28E_LsBFxK6pix0ua6A/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbxzmHy9b_TCrNnGSmzOvcn90iiSRutZW149UIn4v6EeXWSVes1OBI_wcntXpWCqYvaCuA/exec';
 var CLOUD = 'dbmyz96cd';
 var PRESET = 'dangoai';
 
@@ -713,9 +713,9 @@ function getPhongName(tenPhong, phongId){
 
 
 async function fixHSData(){
-  if(!confirm('Tự động sửa tên xe/phòng bị lưu sai?\nThao tác này an toàn, không xóa dữ liệu.'))return;
-  showLoad('Đang sửa dữ liệu...');
-  var r=await apiGet({action:'fixHSData'});
+  if(!confirm('Tự động sửa dữ liệu xe/phòng bị lệch cột?\nKhông xóa dữ liệu.'))return;
+  showLoad('Đang sửa...');
+  var r=await apiGet({action:'fixColumnShift'});
   hideLoad();
   if(r.success){showToast('Đã sửa '+r.fixed+' học sinh!');loadHS();}
   else showToast(r.error||'Lỗi','error');
