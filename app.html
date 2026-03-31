@@ -525,7 +525,7 @@ async function apiGet(data){
   try{
     var params=new URLSearchParams();
     for(var k in data){if(data[k]!==undefined&&data[k]!==null)params.append(k,typeof data[k]==='object'?JSON.stringify(data[k]):data[k]);}
-    var r=await fetch(GAS_URL+'?'+params.toString(),{method:'GET',redirect:'follow'});
+    var r=await fetch(GAS_URL+'?'+params.toString(),{method:'GET',redirect:'follow',cache:'no-store'});
     var t=await r.text();
     try{return JSON.parse(t);}catch(e){return {error:'Server error'};}
   }catch(e){return {error:'Lỗi kết nối: '+e.message};}
@@ -613,14 +613,16 @@ window.onload = async function(){
   document.getElementById('uInfo').innerHTML='<div class="nm">'+CU.ho_ten+'</div><div class="rb">'+(rm[CU.role]||CU.role)+'</div>';
   buildTabs();
   showLoad('Đang tải...');
-  await loadConfig();
-  await Promise.all([loadXe(),loadPhong(),loadSK(),loadUsers()]);
+  // Load song song tất cả cùng lúc
+  await Promise.all([loadConfig(),loadXe(),loadPhong(),loadSK(),loadUsers()]);
   hideLoad();
   var tabs=TAB_CFG[CU.role]||['qltt'];
-  if(tabs.indexOf('hs')>=0){loadHS();if(hasRole('admin')){var btn=document.getElementById('btnFixData');if(btn)btn.style.display='flex';}}
+  // Load các tab song song
+  var loaders=[];
+  if(tabs.indexOf('hs')>=0){loaders.push(loadHS());if(hasRole('admin')){var btn=document.getElementById('btnFixData');if(btn)btn.style.display='flex';}}
+  if(tabs.indexOf('sc')>=0)prepSuCo();
   if(tabs.indexOf('qltt')>=0)prepQLTT();
   if(tabs.indexOf('qlc')>=0){loadDash();startDashTimer();}
-  if(tabs.indexOf('sc')>=0)prepSuCo();
 };
 
 function buildTabs(){
