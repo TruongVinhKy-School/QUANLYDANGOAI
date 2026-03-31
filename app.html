@@ -112,6 +112,7 @@ input[type=checkbox]{accent-color:var(--gl)}
       <button class="btn btn-d btn-sm" onclick="delSelHS()">🗑 Xóa đã chọn</button>
       <button class="btn btn-d" onclick="confirmClearHS()">🗑 Xóa toàn bộ</button>
       <button class="btn btn-o" onclick="dlHSTemplate()">📄 File mẫu</button>
+      <button class="btn btn-b" id="btnFixData" style="display:none" onclick="fixHSData()" title="Sửa data xe/phòng bị lưu sai">🔧 Fix dữ liệu</button>
       <input type="file" id="hsFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importHSFile(this)">
     </div>
   </div>
@@ -616,7 +617,7 @@ window.onload = async function(){
   await Promise.all([loadXe(),loadPhong(),loadSK(),loadUsers()]);
   hideLoad();
   var tabs=TAB_CFG[CU.role]||['qltt'];
-  if(tabs.indexOf('hs')>=0)loadHS();
+  if(tabs.indexOf('hs')>=0){loadHS();if(hasRole('admin')){var btn=document.getElementById('btnFixData');if(btn)btn.style.display='flex';}}
   if(tabs.indexOf('qltt')>=0)prepQLTT();
   if(tabs.indexOf('qlc')>=0){loadDash();startDashTimer();}
   if(tabs.indexOf('sc')>=0)prepSuCo();
@@ -670,7 +671,7 @@ function renderHS(list){
     var ten=r.ho_ten.replace(/"/g,'&quot;');
     h+='<tr><td><input type="checkbox" class="ck-hs" data-id="'+r.id+'"></td>'+
       '<td><strong>'+r.ho_ten+'</strong></td><td>'+cleanDate(r.ngay_sinh)+'</td><td>'+r.lop+'</td>'+
-      '<td>'+(r.ten_xe||'—')+'</td><td>'+(r.ten_phong||'—')+'</td>'+
+      '<td>'+(getXeName(r.ten_xe,r.xe_id))+'</td><td>'+(getPhongName(r.ten_phong,r.phong_id))+'</td>'+
       '<td style="white-space:nowrap">'+
         '<button style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px;margin-right:4px" onclick="openHSModal(this)" data-id="'+r.id+'">✏️ Sửa</button>'+
         '<button style="background:var(--err);color:#fff;border:none;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:12px" onclick="delHS(this)" data-id="'+r.id+'" data-ten="'+ten+'">🗑</button>'+
@@ -679,6 +680,47 @@ function renderHS(list){
   b.innerHTML=h;
   document.getElementById('hsPaging').textContent='Tổng: '+list.length+' học sinh';
 }
+
+function getXeName(tenXe, xeId){
+  // Nếu ten_xe là số thuần (như 46023) hoặc ID dạng hex → tìm trong xeAll
+  var isPureNum = tenXe && /^[0-9]+$/.test(tenXe.trim());
+  var isId = tenXe && /^[0-9a-f]{5,}$/i.test(tenXe.trim());
+  if(!tenXe || isPureNum || isId){
+    // Tìm theo xe_id trước
+    if(xeId){var xe=xeAll.find(function(x){return x.id===xeId;});if(xe)return xe.ten_xe;}
+    // Tìm theo ten_xe là số → có thể là "1.1" map sang "Xe 1.1"
+    if(tenXe){
+      var xeByName=xeAll.find(function(x){return x.ten_xe.replace(/^xe\s*/i,'')===tenXe.trim();});
+      if(xeByName)return xeByName.ten_xe;
+    }
+    return tenXe||'—';
+  }
+  return tenXe;
+}
+function getPhongName(tenPhong, phongId){
+  var isPureNum = tenPhong && /^[0-9]+$/.test(tenPhong.trim());
+  var isId = tenPhong && /^[0-9a-f]{5,}$/i.test(tenPhong.trim());
+  if(!tenPhong || isPureNum || isId){
+    if(phongId){var ph=phongAll.find(function(p){return p.id===phongId;});if(ph)return ph.ten_phong;}
+    if(tenPhong){
+      var phByName=phongAll.find(function(p){return p.ten_phong.replace(/^ph[oò]ng\s*/i,'')===tenPhong.trim();});
+      if(phByName)return phByName.ten_phong;
+    }
+    return tenPhong||'—';
+  }
+  return tenPhong;
+}
+
+
+async function fixHSData(){
+  if(!confirm('Tự động sửa tên xe/phòng bị lưu sai?\nThao tác này an toàn, không xóa dữ liệu.'))return;
+  showLoad('Đang sửa dữ liệu...');
+  var r=await apiGet({action:'fixHSData'});
+  hideLoad();
+  if(r.success){showToast('Đã sửa '+r.fixed+' học sinh!');loadHS();}
+  else showToast(r.error||'Lỗi','error');
+}
+
 function filterHS(){
   var sk=V('hs-sk').toLowerCase(),fxe=V('hs-fxe'),fph=V('hs-fph');
   var list=hsAll;
