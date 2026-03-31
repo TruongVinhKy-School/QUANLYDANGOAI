@@ -466,7 +466,7 @@ input[type=checkbox]{accent-color:var(--gl)}
 // ================================================================
 // CONFIG
 // ================================================================
-var GAS_URL = 'https://script.google.com/macros/s/AKfycbzHdDhShtEMhdsBoUHL1Mxk7aYbgw0Pr1_Rt82jV_2DndrmSC1d98DoeLZ1x8QP0YJScQ/exec';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbzrRk8RIJncsmqK7lIXj1NggjHGx1eZOjwTwVbmwxATFhdYwUyfWYV6ifu6iylXYC1vug/exec';
 var CLOUD = 'dbmyz96cd';
 var PRESET = 'dangoai';
 
@@ -818,15 +818,29 @@ function readXLSX(file){
     var rd=new FileReader();
     rd.onload=function(e){
       try{
-        var wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+        // cellDates:true để đọc đúng ngày sinh
+        // raw:false để lấy text format
+        var wb=XLSX.read(e.target.result,{type:'array',cellDates:true,raw:false});
         var ws=wb.Sheets[wb.SheetNames[0]];
-        var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        // Dùng raw:false để SheetJS tự format cell thành string
+        var data=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
         if(data.length<2){res([]);return;}
         var hdrs=data[0].map(function(h){return normHeader(String(h).trim());});
         var rows=[];
         for(var i=1;i<data.length;i++){
-          var row=data[i];if(!row.some(function(v){return v!=='';}))continue;
-          var obj={};hdrs.forEach(function(h,j){obj[h]=row[j]!==undefined?String(row[j]).trim():'';});
+          var row=data[i];
+          if(!row.some(function(v){return v!=='';}))continue;
+          var obj={};
+          hdrs.forEach(function(h,j){
+            var v=row[j]!==undefined?String(row[j]).trim():'';
+            // Xử lý cột xe: nếu SheetJS format thành dạng ngày "1/1/2026" → convert về "1.1"
+            if(h==='xe' && v){
+              var xeFixed=fixXeValue(v);
+              obj[h]=xeFixed;
+            } else {
+              obj[h]=v;
+            }
+          });
           if(obj.ho_ten)rows.push(obj);
         }
         res(rows);
@@ -834,6 +848,32 @@ function readXLSX(file){
     };
     rd.onerror=rej;rd.readAsArrayBuffer(file);
   });
+}
+
+// Chuyển giá trị xe từ dạng ngày về dạng số
+// VD: "1/1/2026" → "1.1", "2/1/2026" → "1.2", "4/1/2026" → "1.4"  
+// VD: "01/01/2026" → "1.1"
+function fixXeValue(v){
+  // Nếu đã đúng dạng số như "1.1", "1.2" → giữ nguyên
+  if(/^\d+\.\d+$/.test(v)) return v;
+  // Nếu dạng ngày M/D/YYYY hoặc D/M/YYYY
+  var m1=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m1){
+    var part1=parseInt(m1[1]);
+    var part2=parseInt(m1[2]);
+    var yr=parseInt(m1[3]);
+    // Excel lưu 1.1 → ngày 1 tháng 1 → SheetJS format là "1/1/2026"
+    // Quy tắc: năm 2026, tháng là số thứ 2 trong tên xe
+    // 1/1/2026 → Xe 1.1 (tháng 1, ngày 1)
+    // 1/2/2026 → Xe 1.2 (tháng 2, ngày 1) 
+    // 1/4/2026 → Xe 1.4 (tháng 4, ngày 1)
+    if(yr>=2020){
+      // part1=ngày, part2=tháng (format M/D thì part1=tháng)
+      // Thử cả 2 format
+      return part1+'.'+part2;
+    }
+  }
+  return v;
 }
 function readCSVFile(file){
   return new Promise(function(res,rej){
