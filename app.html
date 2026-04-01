@@ -355,6 +355,7 @@ input[type=checkbox]{accent-color:var(--gl)}
       <div class="fg"><label>Email BLĐ</label><input type="email" id="cfg-email-bld"></div>
     </div>
     <button class="btn btn-p" onclick="saveConfig()">💾 Lưu cấu hình</button>
+      <button class="btn btn-d btn-sm" onclick="resetDiemDanh()" style="background:#8e44ad">⚠️ Reset toàn bộ điểm danh</button>
   </div>
   <div class="card">
     <div class="ct">👥 Quản Lý Tài Khoản</div>
@@ -1039,7 +1040,10 @@ async function saveSK(){
 }
 function fillSK(id){
   var r=skAll.find(function(x){return x.id===id;});if(!r)return;
-  S('sk-id',id);S('sk-ten',r.ten);S('sk-loai',r.loai);S('sk-mo',r.mo_ta||'');S('sk-tt',r.thu_tu||'10');
+  S('sk-id',id);S('sk-ten',r.ten);S('sk-loai',r.loai);S('sk-mo',r.mo_ta||'');
+  // Chỉ set thu_tu nếu là số
+  var tt=r.thu_tu&&!isNaN(parseInt(r.thu_tu))?r.thu_tu:'10';
+  S('sk-tt',tt);
   var chk=document.getElementById('sk-tt-status');
   if(chk) chk.checked=(r.trang_thai||'active')==='active';
   window.scrollTo(0,0);showToast('Đang sửa: '+r.ten,'warning');
@@ -1149,6 +1153,16 @@ async function submitVang(type){
 
 
 // Điểm danh lại - xóa dữ liệu điểm danh hiện tại rồi reset
+
+async function resetDiemDanh(){
+  if(!confirm('XÓA SẠCH toàn bộ dữ liệu điểm danh và tạo lại?\nThao tác không thể hoàn tác!'))return;
+  showLoad('Đang reset...');
+  var r=await apiGet({action:'resetDiemDanh'});
+  hideLoad();
+  if(r.success){showToast('Đã reset dữ liệu điểm danh!');loadDash();}
+  else showToast(r.error||'Lỗi','error');
+}
+
 async function resetDD(type){
   var skId=V('qltt-sk');
   if(!skId){showToast('Chọn sự kiện trước','error');return;}
