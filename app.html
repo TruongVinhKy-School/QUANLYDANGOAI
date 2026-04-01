@@ -718,7 +718,13 @@ function renderXe(){
   b.innerHTML=xeAll.map(function(r){return '<tr><td><strong>'+r.ten_xe+'</strong></td><td>'+r.so_cho+'</td><td>'+(r.gv_tens||'—')+'</td><td><span class="badge b-blue">'+(r.so_hs||0)+' HS</span></td><td style="white-space:nowrap"><button class="btn btn-w btn-sm" onclick="fillXe(\''+r.id+'\')">✏️</button> <button class="btn btn-d btn-sm" onclick="delXe(\''+r.id+'\')">🗑</button></td></tr>';}).join('');
 }
 function fillXeSelects(){
-  var opts='<option value="">-- Chọn xe --</option>'+xeAll.map(function(x){return '<option value="'+x.id+'">'+x.ten_xe+'</option>';}).join('');
+  // Admin thấy tất cả, GV chỉ thấy xe được phân công
+  var list=xeAll;
+  if(!hasRole('admin','quanly','bld')){
+    list=xeAll.filter(function(x){return x.gv_ids&&x.gv_ids.split(',').indexOf(CU.id)>=0;});
+    if(!list.length&&CU.xe_ids) list=xeAll.filter(function(x){return CU.xe_ids.split(',').indexOf(x.id)>=0;});
+  }
+  var opts='<option value="">-- Chọn xe --</option>'+list.map(function(x){return '<option value="'+x.id+'">'+x.ten_xe+'</option>';}).join('');
   var e=document.getElementById('qltt-xe');if(e)e.innerHTML=opts;
 }
 async function saveXe(){
@@ -743,7 +749,12 @@ function renderPhong(){
   b.innerHTML=phongAll.map(function(r){return '<tr><td><strong>'+r.ten_phong+'</strong></td><td>'+(r.khach_san||'—')+'</td><td>'+(r.gv_tens||'—')+'</td><td><span class="badge b-blue">'+(r.so_hs||0)+' HS</span></td><td style="white-space:nowrap"><button class="btn btn-w btn-sm" onclick="fillPhong(\''+r.id+'\')">✏️</button> <button class="btn btn-d btn-sm" onclick="delPhong(\''+r.id+'\')">🗑</button></td></tr>';}).join('');
 }
 function fillPhSelects(){
-  var opts='<option value="">-- Chọn phòng --</option>'+phongAll.map(function(p){return '<option value="'+p.id+'">'+p.ten_phong+(p.khach_san?' ('+p.khach_san+')':'')+' </option>';}).join('');
+  var list=phongAll;
+  if(!hasRole('admin','quanly','bld')){
+    list=phongAll.filter(function(p){return p.gv_ids&&p.gv_ids.split(',').indexOf(CU.id)>=0;});
+    if(!list.length&&CU.phong_ids) list=phongAll.filter(function(p){return CU.phong_ids.split(',').indexOf(p.id)>=0;});
+  }
+  var opts='<option value="">-- Chọn phòng --</option>'+list.map(function(p){return '<option value="'+p.id+'">'+p.ten_phong+(p.khach_san?' ('+p.khach_san+')':'')+' </option>';}).join('');
   var e=document.getElementById('qltt-ph');if(e)e.innerHTML=opts;
 }
 async function savePhong(){
