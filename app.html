@@ -222,14 +222,13 @@ tr:hover td{background:#f1f8f2}
       <div class="img-preview" id="xe-preview"></div>
       <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
         <input type="text" id="xe-search" placeholder="🔍 Tìm học sinh..." oninput="filterHSQLTT('xe')" style="flex:1;padding:9px 12px;border:1.5px solid var(--bd);border-radius:8px;font-size:14px;font-family:inherit;outline:none;min-width:150px">
-        <button class="btn btn-o btn-sm" onclick="chkAllQLTT('xe',true)">☑ Tất cả</button>
-        <button class="btn btn-o btn-sm" onclick="chkAllQLTT('xe',false)">☐ Bỏ chọn</button>
+        <button class="btn btn-s btn-sm" onclick="setAllStatus('xe','comat')">✅ Tất cả có mặt</button>
+        <button class="btn btn-w btn-sm" onclick="setAllStatus('xe','vang')">⚠️ Tất cả vắng</button>
       </div>
       <div id="xe-hs-list" style="max-height:50vh;overflow-y:auto"></div>
       <div class="bg" style="margin-top:12px">
-        <button class="btn btn-s" onclick="submitDD('xe')">✅ Điểm danh có mặt</button>
-        <button class="btn btn-w" onclick="submitVang('xe')">⚠️ Ghi vắng</button>
-        <button class="btn btn-b" onclick="resetDD('xe')">🔄 Điểm danh lại</button>
+        <button class="btn btn-s" onclick="submitDD('xe')">💾 Lưu điểm danh</button>
+        <button class="btn btn-b" onclick="resetDD('xe')">🔄 Làm lại</button>
       </div>
     </div>
   </div>
@@ -247,14 +246,13 @@ tr:hover td{background:#f1f8f2}
       <div class="img-preview" id="ph-preview"></div>
       <div style="display:flex;gap:8px;margin:10px 0;flex-wrap:wrap">
         <input type="text" id="ph-search" placeholder="🔍 Tìm học sinh..." oninput="filterHSQLTT('phong')" style="flex:1;padding:9px 12px;border:1.5px solid var(--bd);border-radius:8px;font-size:14px;font-family:inherit;outline:none;min-width:150px">
-        <button class="btn btn-o btn-sm" onclick="chkAllQLTT('phong',true)">☑ Tất cả</button>
-        <button class="btn btn-o btn-sm" onclick="chkAllQLTT('phong',false)">☐ Bỏ chọn</button>
+        <button class="btn btn-s btn-sm" onclick="setAllStatus('phong','comat')">✅ Tất cả có mặt</button>
+        <button class="btn btn-w btn-sm" onclick="setAllStatus('phong','vang')">⚠️ Tất cả vắng</button>
       </div>
       <div id="ph-hs-list" style="max-height:50vh;overflow-y:auto"></div>
       <div class="bg" style="margin-top:12px">
-        <button class="btn btn-s" onclick="submitDD('phong')">✅ Điểm danh có mặt</button>
-        <button class="btn btn-w" onclick="submitVang('phong')">⚠️ Ghi vắng</button>
-        <button class="btn btn-b" onclick="resetDD('phong')">🔄 Điểm danh lại</button>
+        <button class="btn btn-s" onclick="submitDD('phong')">💾 Lưu điểm danh</button>
+        <button class="btn btn-b" onclick="resetDD('phong')">🔄 Làm lại</button>
       </div>
     </div>
   </div>
@@ -895,30 +893,50 @@ function renderHSQLTT(type,hsList,ddList,containerId,searchId){
   var b=document.getElementById(containerId);
   var kw=document.getElementById(searchId)?document.getElementById(searchId).value.toLowerCase():'';
   var list=kw?hsList.filter(function(h){return h.ho_ten.toLowerCase().indexOf(kw)>=0;}):hsList;
-  var ddIds=ddList.filter(function(d){return d.co_mat==='true';}).map(function(d){return d.hs_id;});
+  var coMatIds=ddList.filter(function(d){return d.co_mat==='true';}).map(function(d){return d.hs_id;});
   var vangIds=ddList.filter(function(d){return d.co_mat!=='true';}).map(function(d){return d.hs_id;});
   if(!list.length){b.innerHTML='<div class="es"><div class="ei">👨‍🎓</div><p>Không có học sinh</p></div>';return;}
-  var h='';
+  // Header
+  var h='<div style="display:grid;grid-template-columns:1fr 80px 80px;gap:8px;padding:6px 12px;background:#e8f5e9;border-radius:8px;margin-bottom:6px;font-weight:700;font-size:12px;color:var(--g)">';
+  h+='<div>Học sinh</div><div style="text-align:center">✅ Có mặt</div><div style="text-align:center">⚠️ Vắng</div></div>';
   for(var i=0;i<list.length;i++){
-    var r=list[i],daDd=ddIds.indexOf(r.id)>=0,vang=vangIds.indexOf(r.id)>=0;
-    var badge=daDd?'<span class="badge b-ok">✅ Đã ĐD</span>':vang?'<span class="badge b-warn">⚠️ Vắng</span>':'<span class="badge b-no">Chưa ĐD</span>';
-    h+='<div class="hs-item'+(daDd?' checked':'')+'" onclick="toggleHSItem(this)">'+
-      '<input type="checkbox" class="hs-ck" data-id="'+r.id+'" '+(daDd?'checked':'')+' onclick="event.stopPropagation()">'+
-      '<div><div class="hs-name">'+r.ho_ten+'</div><div class="hs-sub">'+r.lop+'</div></div>'+badge+'</div>';
+    var r=list[i];
+    var isCM=coMatIds.indexOf(r.id)>=0;
+    var isVang=vangIds.indexOf(r.id)>=0;
+    var rowBg=isCM?'background:#f0faf2;border-color:var(--gl)':isVang?'background:#fef9e7;border-color:var(--warn)':'';
+    h+='<div style="display:grid;grid-template-columns:1fr 80px 80px;gap:8px;align-items:center;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);margin-bottom:6px;'+rowBg+'">';
+    h+='<div><div class="hs-name">'+r.ho_ten+'</div><div class="hs-sub">'+r.lop+'</div></div>';
+    h+='<div style="text-align:center"><input type="radio" name="dd_'+r.id+'" value="comat" class="hs-radio" data-id="'+r.id+'" data-type="comat" '+(isCM?'checked':'')+' style="width:18px;height:18px;accent-color:var(--gl);cursor:pointer"></div>';
+    h+='<div style="text-align:center"><input type="radio" name="dd_'+r.id+'" value="vang" class="hs-radio" data-id="'+r.id+'" data-type="vang" '+(isVang?'checked':'')+' style="width:18px;height:18px;accent-color:var(--warn);cursor:pointer"></div>';
+    h+='</div>';
   }
   b.innerHTML=h;
 }
-function toggleHSItem(el){var ck=el.querySelector('.hs-ck');ck.checked=!ck.checked;el.classList.toggle('checked',ck.checked);}
-function chkAllQLTT(type,v){var prefix=type==='xe'?'xe':'ph';document.querySelectorAll('#'+prefix+'-hs-list .hs-ck').forEach(function(c,i){c.checked=v;var p=c.closest('.hs-item');if(p)p.classList.toggle('checked',v);});}
+function toggleHSItem(el){}
+function chkAllQLTT(type,v){}
+function setAllStatus(type,status){
+  var prefix=type==='xe'?'xe':'ph';
+  var radios=document.querySelectorAll('#'+prefix+'-hs-list .hs-radio[data-type="'+status+'"]');
+  radios.forEach(function(r){r.checked=true;});
+  // Update row color
+  var rows=document.querySelectorAll('#'+prefix+'-hs-list > div:not(:first-child)');
+  rows.forEach(function(row){
+    row.style.background=status==='comat'?'#f0faf2':'#fef9e7';
+    row.style.borderColor=status==='comat'?'var(--gl)':'var(--warn)';
+  });
+}
 function filterHSQLTT(type){if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
 
 async function submitDD(type){
   var skId=V('qltt-sk');if(!skId){showToast('Chọn sự kiện trước','error');return;}
   var xeId=V('qltt-xe'),phId=V('qltt-ph');
-  var cks=Array.from(document.querySelectorAll('#'+(type==='xe'?'xe':'ph')+'-hs-list .hs-ck:checked'));
-  if(!cks.length){showToast('Chọn ít nhất 1 HS','error');return;}
+  var prefix=type==='xe'?'xe':'ph';
+  var radios=Array.from(document.querySelectorAll('#'+prefix+'-hs-list .hs-radio:checked'));
+  if(!radios.length){showToast('Chưa chọn trạng thái cho HS nào','error');return;}
   var imgs=type==='xe'?xeImgs:phImgs;
-  var items=cks.map(function(c){return {hs_id:c.dataset.id,co_mat:'true',hinh_url:imgs.length?imgs[0]:''};});
+  var items=radios.map(function(r){
+    return {hs_id:r.dataset.id,co_mat:r.dataset.type==='comat'?'true':'false',hinh_url:r.dataset.type==='comat'&&imgs.length?imgs[0]:''};
+  });
   showLoad('Đang lưu...');
   var payload={action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items};
   if(type==='xe')payload.xe_id=xeId;else payload.phong_id=phId;
@@ -927,20 +945,8 @@ async function submitDD(type){
   if(r.success){showToast('Đã điểm danh '+items.length+' HS!');if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
   else showToast(r.error||'Lỗi','error');
 }
-async function submitVang(type){
-  var skId=V('qltt-sk');if(!skId){showToast('Chọn sự kiện trước','error');return;}
-  var xeId=V('qltt-xe'),phId=V('qltt-ph');
-  var cks=Array.from(document.querySelectorAll('#'+(type==='xe'?'xe':'ph')+'-hs-list .hs-ck:checked'));
-  if(!cks.length){showToast('Chọn HS vắng','error');return;}
-  var items=cks.map(function(c){return {hs_id:c.dataset.id,co_mat:'false'};});
-  showLoad('Đang ghi vắng...');
-  var payload={action:'saveDiemDanh',su_kien_id:skId,loai:type,nguoi_dd_id:CU.id,nguoi_dd_ten:CU.ho_ten,items:items};
-  if(type==='xe')payload.xe_id=xeId;else payload.phong_id=phId;
-  var r=await apiPost(payload);
-  hideLoad();
-  if(r.success){showToast('Đã ghi vắng '+items.length+' HS!');if(type==='xe')loadQLTTXe();else loadQLTTPhong();}
-  else showToast(r.error||'Lỗi','error');
-}
+// Giữ submitVang để tương thích nhưng gọi submitDD
+async function submitVang(type){submitDD(type);}
 async function resetDD(type){
   var skId=V('qltt-sk');if(!skId){showToast('Chọn sự kiện trước','error');return;}
   var xeId=V('qltt-xe'),phId=V('qltt-ph');
