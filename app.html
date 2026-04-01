@@ -845,6 +845,11 @@ function prepQLTT(){
     document.getElementById('qltt-ph').innerHTML='<option value="">-- Chọn --</option>'+myPh.map(function(p){return '<option value="'+p.id+'">'+p.ten_phong+'</option>';}).join('');
     if(myPh.length===1){S('qltt-ph',myPh[0].id);var pw=document.getElementById('qltt-ph-wrap');if(pw&&!hasRole('admin'))pw.style.display='none';}
   }
+  // Load danh sách HS ngay nếu đã có xe/phòng và sự kiện
+  setTimeout(function(){
+    if(V('qltt-xe'))loadQLTTXe();
+    if(V('qltt-ph'))loadQLTTPhong();
+  }, 300);
 }
 function switchQLTT(mode,btn){
   document.querySelectorAll('#tc-qltt .stb').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');
@@ -854,7 +859,10 @@ function switchQLTT(mode,btn){
   if(xw)xw.style.display=mode==='xe'?'flex':'none';
   if(pw)pw.style.display=mode==='phong'?'flex':'none';
 }
-function loadQLTT(){loadQLTTXe();loadQLTTPhong();}
+function loadQLTT(){
+  if(V('qltt-xe'))loadQLTTXe();
+  if(V('qltt-ph'))loadQLTTPhong();
+}
 async function loadQLTTXe(){
   var skId=V('qltt-sk'),xeId=V('qltt-xe');if(!xeId)return;
   var xe=xeAll.find(function(x){return x.id===xeId;});
