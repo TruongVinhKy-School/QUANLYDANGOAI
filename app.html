@@ -988,11 +988,23 @@ async function loadDash(){
     h+='<div class="ds"><div class="ds-val" style="color:var(--blue)">'+pct+'%</div><div class="ds-lbl">Tỉ lệ</div></div>';
     h+='</div>';
     if(chuaDD&&chuaDD.length){
-      h+='<div style="margin-top:7px;padding:7px 10px;background:#fff5f5;border-radius:7px;border-left:3px solid var(--err)">';
-      h+='<div style="font-size:11px;font-weight:700;color:var(--err);margin-bottom:3px">⚠️ Chưa ĐD: '+chuaDD.length+' HS</div>';
-      chuaDD.slice(0,4).forEach(function(s){h+='<div style="font-size:12px;color:#666">• '+s.ho_ten+(s.lop?' ('+s.lop+')':'')+'</div>';});
-      if(chuaDD.length>4)h+='<div style="font-size:11px;color:#999">... +'+(chuaDD.length-4)+' em</div>';
-      h+='</div>';
+      // Tách vắng và chưa ĐD
+      var vangList=chuaDD.filter(function(s){return s._vang;});
+      var chuaList=chuaDD.filter(function(s){return !s._vang;});
+      if(vangList.length){
+        h+='<div style="margin-top:7px;padding:7px 10px;background:#fef9e7;border-radius:7px;border-left:3px solid var(--warn)">';
+        h+='<div style="font-size:11px;font-weight:700;color:var(--warn);margin-bottom:3px">⚠️ Vắng: '+vangList.length+' HS</div>';
+        vangList.slice(0,4).forEach(function(s){h+='<div style="font-size:12px;color:#666">• '+s.ho_ten+(s.lop?' ('+s.lop+')':'')+'</div>';});
+        if(vangList.length>4)h+='<div style="font-size:11px;color:#999">... +'+(vangList.length-4)+' em</div>';
+        h+='</div>';
+      }
+      if(chuaList.length){
+        h+='<div style="margin-top:7px;padding:7px 10px;background:#fff5f5;border-radius:7px;border-left:3px solid var(--err)">';
+        h+='<div style="font-size:11px;font-weight:700;color:var(--err);margin-bottom:3px">❓ Chưa ĐD: '+chuaList.length+' HS</div>';
+        chuaList.slice(0,4).forEach(function(s){h+='<div style="font-size:12px;color:#666">• '+s.ho_ten+(s.lop?' ('+s.lop+')':'')+'</div>';});
+        if(chuaList.length>4)h+='<div style="font-size:11px;color:#999">... +'+(chuaList.length-4)+' em</div>';
+        h+='</div>';
+      }
     }
     if(imgs&&imgs.length){
       h+='<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--g);margin-bottom:5px">📷 '+imgs.length+' ảnh:</div><div style="display:flex;flex-wrap:wrap;gap:5px">';
